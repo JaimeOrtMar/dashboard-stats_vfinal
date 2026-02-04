@@ -20,8 +20,10 @@ var AppConfig = {
         TWILIO_CONVERSATIONS: 'https://dashboard-api-4813.twil.io/get-conversations',
         /** Endpoint para obtener grabaciones y transcripciones de Retell AI. */
         RETELL_CALLS: 'https://dashboard-api-4813.twil.io/get-retell-calls',
-        /** Webhook de n8n para el flujo de recuperación de contraseña. */
-        FORGOT_PASSWORD: ''
+        /** Webhook de n8n para solicitar recuperación de contraseña (envía email). */
+        REQUEST_PASSWORD_RESET: '',
+        /** Webhook de n8n para confirmar nueva contraseña (desde el link del email). */
+        CONFIRM_PASSWORD_RESET: ''
     },
 
     /**

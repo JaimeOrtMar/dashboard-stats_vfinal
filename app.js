@@ -50,12 +50,24 @@
     // INICIALIZACION DE LA APLICACION
     // =========================================================================
 
+    /** @type {string} Username para el proceso de reset */
+    var resetUsernameValue = '';
+
     /**
      * Inicializa la aplicacion.
      * Verifica si existe una sesion valida y restaura el estado correspondiente.
      * Vincula los event listeners necesarios.
      */
     function initializeApplication() {
+        // Vincular event listeners primero
+        attachEventListeners();
+
+        // Verificar si hay un token de reset en la URL
+        if (checkForResetToken()) {
+            // Si hay token, ya se muestra la vista de reset
+            return;
+        }
+
         // Verificar si hay una sesion valida existente
         if (SessionManager.isSessionValid()) {
             displayDashboardView();
@@ -63,9 +75,6 @@
         } else {
             displayLoginView();
         }
-
-        // Vincular event listeners
-        attachEventListeners();
     }
 
     /**
@@ -95,6 +104,20 @@
                 if (event.target === forgotPasswordModal) {
                     hideRecoveryModal();
                 }
+            });
+        }
+
+        // Event listeners para el formulario de reset de contraseña
+        var resetForm = document.getElementById('reset-password-form');
+        if (resetForm !== null) {
+            resetForm.addEventListener('submit', handleResetPasswordSubmit);
+        }
+
+        var backLink = document.getElementById('back-to-login-link');
+        if (backLink !== null) {
+            backLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                hideResetPasswordView();
             });
         }
 
@@ -637,8 +660,40 @@
     }
 
     // =========================================================================
-    // GESTION DEL MODAL DE RECUPERACION DE CONTRASEÑA
+    // GESTION DEL FLUJO DE RECUPERACION DE CONTRASEÑA
     // =========================================================================
+
+    // Referencias adicionales para el flujo de reset
+    /** @type {HTMLElement|null} */
+    var resetPasswordView = document.getElementById('reset-password-view');
+    /** @type {HTMLFormElement|null} */
+    var resetPasswordForm = /** @type {HTMLFormElement|null} */ (document.getElementById('reset-password-form'));
+    /** @type {HTMLElement|null} */
+    var resetMessageContainer = document.getElementById('reset-message');
+    /** @type {HTMLAnchorElement|null} */
+    var backToLoginLink = /** @type {HTMLAnchorElement|null} */ (document.getElementById('back-to-login-link'));
+
+    /** @type {string|null} Token de reset extraído de la URL */
+    var resetToken = null;
+
+    /**
+     * Verifica si hay un token de reset en la URL al cargar la página.
+     * Si existe, muestra la vista de reset de contraseña.
+     */
+    function checkForResetToken() {
+        var urlParams = new URLSearchParams(window.location.search);
+        var token = urlParams.get('reset_token');
+        var username = urlParams.get('username');
+
+        if (token && username) {
+            resetToken = token;
+            // Guardar el username para usarlo después
+            resetUsernameValue = username;
+            showResetPasswordView();
+            return true;
+        }
+        return false;
+    }
 
     /**
      * Maneja el clic en el enlace "Olvidé mi contraseña".
@@ -653,7 +708,7 @@
 
     /**
      * Maneja el envío del formulario de recuperación de contraseña.
-     * Envía el email al webhook configurado en n8n.
+     * Envía SOLO el usuario al webhook de n8n para que envíe el email.
      * 
      * @param {Event} submitEvent - Evento de submit del formulario.
      */
@@ -662,24 +717,21 @@
 
         /** @type {HTMLInputElement|null} */
         var usernameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('recovery-username'));
-        /** @type {HTMLInputElement|null} */
-        var passwordInput = /** @type {HTMLInputElement|null} */ (document.getElementById('recovery-new-password'));
 
-        if (!usernameInput || !passwordInput) {
+        if (!usernameInput) {
             return;
         }
 
         var username = usernameInput.value.trim();
-        var newPassword = passwordInput.value.trim();
 
-        // Validar que los campos no estén vacíos
-        if (!username || !newPassword) {
-            showRecoveryMessage('Por favor, completa todos los campos.', 'error');
+        // Validar que el campo no esté vacío
+        if (!username) {
+            showRecoveryMessage('Por favor, ingresa tu nombre de usuario.', 'error');
             return;
         }
 
         // Verificar que el webhook esté configurado
-        var webhookUrl = AppConfig.API_ENDPOINTS.FORGOT_PASSWORD;
+        var webhookUrl = AppConfig.API_ENDPOINTS.REQUEST_PASSWORD_RESET;
 
         if (!webhookUrl) {
             showRecoveryMessage('El servicio de recuperación no está configurado. Contacta al administrador.', 'error');
@@ -697,46 +749,167 @@
             return;
         }
 
-        var originalButtonText = submitButton.textContent;
+        var originalButtonHtml = submitButton.innerHTML;
         submitButton.disabled = true;
-        submitButton.textContent = 'Procesando...';
+        submitButton.innerHTML = '<span class="loading-spinner"></span> Enviando...';
 
         try {
-            // Payload para n8n: usuario y nueva contraseña
+            // Payload para n8n: solo el usuario
+            // n8n buscará el email asociado y enviará el link de reset
             var payload = {
                 username: username,
-                "new-password": newPassword
+                // Incluir la URL base para que n8n pueda construir el link de reset
+                resetBaseUrl: window.location.origin + window.location.pathname
             };
 
             var response = await ApiClient.post(webhookUrl, payload);
 
             if (response !== null) {
-                // Asumimos éxito si la respuesta es OK, n8n debe manejar la lógica y devolver JSON
-                // Si n8n devuelve { success: false }, ApiClient podría no capturarlo como error http,
-                // así que verificamos si hay propiedad success en response si es un objeto.
-
                 if (response.success === false) {
-                    showRecoveryMessage(response.message || 'No se pudo actualizar la contraseña.', 'error');
+                    showRecoveryMessage(response.message || 'No se encontró el usuario. Verifica e intenta de nuevo.', 'error');
                 } else {
-                    showRecoveryMessage('Contraseña actualizada correctamente.', 'success');
+                    // Éxito: mostrar mensaje de que se envió el email
+                    showRecoveryMessage('📧 Se ha enviado un email con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada.', 'success');
                     usernameInput.value = '';
-                    passwordInput.value = '';
 
-                    // Cerrar el modal después de 3 segundos
+                    // Cerrar el modal después de 5 segundos
                     setTimeout(function () {
                         hideRecoveryModal();
-                    }, 3000);
+                    }, 5000);
                 }
             } else {
                 showRecoveryMessage('Error de conexión. Intenta de nuevo más tarde.', 'error');
             }
         } catch (error) {
-            console.error('Error en cambio de contraseña:', error);
+            console.error('Error en recuperación de contraseña:', error);
             showRecoveryMessage('Ocurrió un error. Verifica tu usuario e intenta de nuevo.', 'error');
         } finally {
             submitButton.disabled = false;
-            submitButton.textContent = originalButtonText;
+            submitButton.innerHTML = originalButtonHtml;
         }
+    }
+
+    /**
+     * Maneja el envío del formulario de reset de contraseña.
+     * Recibe la nueva contraseña y la envía junto con el token a n8n.
+     * 
+     * @param {Event} submitEvent - Evento de submit del formulario.
+     */
+    async function handleResetPasswordSubmit(submitEvent) {
+        submitEvent.preventDefault();
+
+        /** @type {HTMLInputElement|null} */
+        var newPasswordInput = /** @type {HTMLInputElement|null} */ (document.getElementById('new-password'));
+        /** @type {HTMLInputElement|null} */
+        var confirmPasswordInput = /** @type {HTMLInputElement|null} */ (document.getElementById('confirm-password'));
+
+        if (!newPasswordInput || !confirmPasswordInput) {
+            return;
+        }
+
+        var newPassword = newPasswordInput.value;
+        var confirmPassword = confirmPasswordInput.value;
+
+        // Validar que los campos no estén vacíos
+        if (!newPassword || !confirmPassword) {
+            showResetMessage('Por favor, completa ambos campos.', 'error');
+            return;
+        }
+
+        // Validar que las contraseñas coincidan
+        if (newPassword !== confirmPassword) {
+            showResetMessage('Las contraseñas no coinciden.', 'error');
+            return;
+        }
+
+        // Validar longitud mínima
+        if (newPassword.length < AppConfig.VALIDATION.PASSWORD_MIN_LENGTH) {
+            showResetMessage('La contraseña debe tener al menos ' + AppConfig.VALIDATION.PASSWORD_MIN_LENGTH + ' caracteres.', 'error');
+            return;
+        }
+
+        // Verificar que el webhook esté configurado
+        var webhookUrl = AppConfig.API_ENDPOINTS.CONFIRM_PASSWORD_RESET;
+
+        if (!webhookUrl) {
+            showResetMessage('El servicio de cambio de contraseña no está configurado. Contacta al administrador.', 'error');
+            return;
+        }
+
+        if (!resetToken) {
+            showResetMessage('Token de reset no válido. Por favor, solicita un nuevo email de recuperación.', 'error');
+            return;
+        }
+
+        /** @type {HTMLButtonElement|null} */
+        var submitButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('btn-reset-submit'));
+        if (!submitButton) {
+            return;
+        }
+
+        var originalButtonHtml = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="loading-spinner"></span> Procesando...';
+
+        try {
+            // Payload para n8n: token, username y nueva contraseña
+            var payload = {
+                token: resetToken,
+                username: resetUsernameValue,
+                newPassword: newPassword
+            };
+
+            var response = await ApiClient.post(webhookUrl, payload);
+
+            if (response !== null) {
+                if (response.success === false) {
+                    showResetMessage(response.message || 'No se pudo cambiar la contraseña. El token puede haber expirado.', 'error');
+                } else {
+                    // Éxito
+                    showResetMessage('✅ ¡Contraseña actualizada correctamente! Redirigiendo al login...', 'success');
+
+                    // Limpiar el token de la URL y redirigir al login
+                    setTimeout(function () {
+                        // Limpiar la URL quitando los parámetros
+                        var cleanUrl = window.location.origin + window.location.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                        window.location.reload();
+                    }, 3000);
+                }
+            } else {
+                showResetMessage('Error de conexión. Intenta de nuevo más tarde.', 'error');
+            }
+        } catch (error) {
+            console.error('Error en cambio de contraseña:', error);
+            showResetMessage('Ocurrió un error. Por favor, intenta de nuevo.', 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonHtml;
+        }
+    }
+
+    /**
+     * Muestra la vista de reset de contraseña (cuando viene del email).
+     */
+    function showResetPasswordView() {
+        DomHelper.hideElement(loginViewElement);
+        DomHelper.hideElement(dashboardViewElement);
+        if (resetPasswordView) {
+            resetPasswordView.style.display = 'flex';
+        }
+    }
+
+    /**
+     * Oculta la vista de reset y vuelve al login.
+     */
+    function hideResetPasswordView() {
+        if (resetPasswordView) {
+            resetPasswordView.style.display = 'none';
+        }
+        // Limpiar la URL
+        var cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        displayLoginView();
     }
 
     /**
@@ -792,6 +965,20 @@
             recoveryMessageContainer.textContent = '';
             recoveryMessageContainer.className = '';
             recoveryMessageContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Muestra un mensaje en la vista de reset.
+     * 
+     * @param {string} message - Mensaje a mostrar.
+     * @param {string} type - Tipo de mensaje: 'success' o 'error'.
+     */
+    function showResetMessage(message, type) {
+        if (resetMessageContainer !== null) {
+            resetMessageContainer.textContent = message;
+            resetMessageContainer.className = 'alert-' + type;
+            resetMessageContainer.style.display = 'block';
         }
     }
 

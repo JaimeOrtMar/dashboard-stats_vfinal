@@ -15,7 +15,8 @@
  * @property {string} TWILIO_STATS - URL de estadísticas de Twilio
  * @property {string} TWILIO_CONVERSATIONS - URL de conversaciones de WhatsApp
  * @property {string} RETELL_CALLS - URL de grabaciones y transcripciones de Retell AI
- * @property {string} FORGOT_PASSWORD - URL del webhook de recuperación de contraseña
+ * @property {string} REQUEST_PASSWORD_RESET - URL del webhook para solicitar recuperación de contraseña
+ * @property {string} CONFIRM_PASSWORD_RESET - URL del webhook para confirmar nueva contraseña
  */
 
 /**
