@@ -19,7 +19,7 @@ var AuthenticationService = (function () {
      */
     async function authenticate(username, password) {
         // ⚠️ MODO DESARROLLO: Cambiar a false cuando el login de n8n esté listo
-        var DEV_MODE_BYPASS_LOGIN = true;
+        var DEV_MODE_BYPASS_LOGIN = false;
 
         if (DEV_MODE_BYPASS_LOGIN) {
             console.warn('⚠️ DEV MODE: Login bypass activo - Desactivar en producción');

@@ -126,6 +126,12 @@
         if (conversationsToggle !== null) {
             conversationsToggle.addEventListener('click', toggleConversationsPanel);
         }
+
+        // Event listener para el botón "Volver" en móvil (chat)
+        var backToListBtn = document.getElementById('back-to-list-btn');
+        if (backToListBtn !== null) {
+            backToListBtn.addEventListener('click', hideChatMessages);
+        }
     }
 
     /**
@@ -147,6 +153,26 @@
         } else {
             section.classList.add('collapsed');
             toggleButton.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    /**
+     * Muestra el panel de mensajes y oculta la lista (para móvil).
+     */
+    function showChatMessages() {
+        var chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.classList.add('showing-messages');
+        }
+    }
+
+    /**
+     * Oculta el panel de mensajes y muestra la lista (para móvil).
+     */
+    function hideChatMessages() {
+        var chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.classList.remove('showing-messages');
         }
     }
 
@@ -570,17 +596,20 @@
         var conversation = loadedConversations[index];
         if (!conversation) return;
 
-        // Actualizar header
-        var header = document.getElementById('chat-messages-header');
-        if (header) {
-            header.innerHTML = '<span class="chat-contact-name">' + conversation.phoneNumber + '</span>';
+        // Actualizar header (preservar botón volver)
+        var headerName = document.querySelector('#chat-messages-header .chat-contact-name');
+        if (headerName) {
+            headerName.textContent = conversation.phoneNumber;
         }
+
+        // Mostrar panel de mensajes (para móvil)
+        showChatMessages();
 
         renderConversationMessages(conversation.messages);
     }
 
     /**
-     * Renderiza los mensajes de una conversación.
+     * Renderiza los mensajes de una conversación con avatares y etiquetas.
      * 
      * @param {WhatsAppMessage[]} messages - Lista de mensajes.
      */
@@ -589,29 +618,92 @@
         if (!container) return;
 
         if (!messages || messages.length === 0) {
-            container.innerHTML = '<p class="empty">No hay mensajes en esta conversación.</p>';
+            container.innerHTML = '<div class="chat-empty-state">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>' +
+                '</svg>' +
+                '<p>No hay mensajes en esta conversación.</p>' +
+                '</div>';
             return;
         }
 
-        var htmlParts = messages.map(function (msg) {
-            var time = new Date(msg.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        /** @type {string[]} */
+        var htmlParts = [];
+        /** @type {string|null} */
+        var lastDate = null;
+
+        messages.forEach(function (msg) {
+            var msgDate = new Date(msg.date);
+            var dateKey = msgDate.toDateString();
+
+            // Añadir separador de fecha si cambia el día
+            if (lastDate !== dateKey) {
+                htmlParts.push(
+                    '<div class="date-separator">' +
+                    '  <span class="date-separator-text">' + formatMessageDate(msgDate) + '</span>' +
+                    '</div>'
+                );
+                lastDate = dateKey;
+            }
+
+            var time = msgDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            var isClient = msg.direction === 'inbound';
+            var senderType = isClient ? 'client' : 'bot';
+            var senderLabel = isClient ? 'Cliente' : 'Bot';
             var statusClass = msg.direction === 'outbound' ? 'status-' + msg.status : '';
 
-            return [
-                '<div class="message-bubble ' + msg.direction + '">',
-                '  <div class="message-body">' + escapeHtml(msg.body) + '</div>',
-                '  <div class="message-time">',
-                '    ' + time,
-                '    <span class="message-status ' + statusClass + '"></span>',
-                '  </div>',
+            // Avatar icon
+            var avatarIcon = isClient
+                ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+                : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>';
+
+            htmlParts.push(
+                '<div class="message-wrapper ' + msg.direction + '">' +
+                '  <div class="message-avatar ' + senderType + '">' + avatarIcon + '</div>' +
+                '  <div class="message-content">' +
+                '    <span class="message-sender ' + senderType + '">' + senderLabel + '</span>' +
+                '    <div class="message-bubble ' + msg.direction + '">' +
+                '      <div class="message-body">' + escapeHtml(msg.body) + '</div>' +
+                '      <div class="message-meta">' +
+                '        <span class="message-time">' + time + '</span>' +
+                '        <span class="message-status ' + statusClass + '"></span>' +
+                '      </div>' +
+                '    </div>' +
+                '  </div>' +
                 '</div>'
-            ].join('');
+            );
         });
 
         container.innerHTML = htmlParts.join('');
 
         // Scroll al final
         container.scrollTop = container.scrollHeight;
+    }
+
+    /**
+     * Formatea la fecha para los separadores de mensajes.
+     * 
+     * @param {Date} date - Fecha a formatear.
+     * @returns {string} Fecha formateada.
+     */
+    function formatMessageDate(date) {
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        var yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        var msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        if (msgDay.getTime() === today.getTime()) {
+            return 'Hoy';
+        } else if (msgDay.getTime() === yesterday.getTime()) {
+            return 'Ayer';
+        } else {
+            return date.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
+            });
+        }
     }
 
     /**

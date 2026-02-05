@@ -1,0 +1,738 @@
+{
+    "name": "Dashboard Auth - Login y Password Reset",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "login",
+                "responseMode": "responseNode",
+                "options": {
+                    "allowedOrigins": "*"
+                }
+            },
+            "id": "webhook-login",
+            "name": "Webhook Login",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                100
+            ],
+            "webhookId": "login-webhook"
+        },
+        {
+            "parameters": {
+                "documentId": {
+                    "__rl": true,
+                    "value": "TU_SPREADSHEET_ID",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Usuarios",
+                    "mode": "list"
+                },
+                "filtersUI": {
+                    "values": [
+                        {
+                            "lookupColumn": "usuario",
+                            "lookupValue": "={{ $json.body.usuario }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "sheets-buscar-usuario",
+            "name": "Buscar Usuario",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                460,
+                100
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "TU_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-password",
+                            "leftValue": "={{ $json.clave }}",
+                            "rightValue": "={{ $('Webhook Login').item.json.body.clave }}",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-password-match",
+            "name": "Validar Password",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'success', message: 'Login exitoso', usuario: $('Buscar Usuario').item.json.usuario }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-login-success",
+            "name": "Login Exitoso",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'error', message: 'Credenciales incorrectas' }) }}",
+                "options": {
+                    "responseCode": 401,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-login-error",
+            "name": "Login Fallido",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "request-password-reset",
+                "responseMode": "responseNode",
+                "options": {
+                    "allowedOrigins": "*"
+                }
+            },
+            "id": "webhook-request-reset",
+            "name": "Webhook Solicitar Reset",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                400
+            ],
+            "webhookId": "request-reset-webhook"
+        },
+        {
+            "parameters": {
+                "documentId": {
+                    "__rl": true,
+                    "value": "TU_SPREADSHEET_ID",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Usuarios",
+                    "mode": "list"
+                },
+                "filtersUI": {
+                    "values": [
+                        {
+                            "lookupColumn": "usuario",
+                            "lookupValue": "={{ $json.body.usuario }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "sheets-buscar-email",
+            "name": "Buscar Email Usuario",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                460,
+                400
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "TU_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-user-exists",
+                            "leftValue": "={{ $json.email }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-user-exists",
+            "name": "Usuario Existe?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "mode": "generate",
+                "stringLength": 32,
+                "output": "base64"
+            },
+            "id": "generate-token",
+            "name": "Generar Token",
+            "type": "n8n-nodes-base.crypto",
+            "typeVersion": 1,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "documentId": {
+                    "__rl": true,
+                    "value": "TU_SPREADSHEET_ID",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Usuarios",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "reset_token": "={{ $json.data }}",
+                        "reset_token_expiry": "={{ new Date(Date.now() + 3600000).toISOString() }}"
+                    }
+                },
+                "options": {
+                    "cellFormat": "USER_ENTERED"
+                },
+                "filtersUI": {
+                    "values": [
+                        {
+                            "lookupColumn": "usuario",
+                            "lookupValue": "={{ $('Webhook Solicitar Reset').item.json.body.usuario }}"
+                        }
+                    ]
+                }
+            },
+            "id": "sheets-guardar-token",
+            "name": "Guardar Token en Sheet",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                1120,
+                300
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "TU_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $('Buscar Email Usuario').item.json.email }}",
+                "subject": "Recuperación de contraseña - Dashboard",
+                "emailType": "html",
+                "message": "<html><head><style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f4f4f4;margin:0;padding:20px}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:40px 20px;text-align:center}.header h1{color:#fff;margin:0;font-size:24px}.content{padding:40px 30px}.btn{display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff!important;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:600;margin:20px 0}.footer{background:#f8fafc;padding:20px;text-align:center;color:#64748b;font-size:12px}</style></head><body><div class='container'><div class='header'><h1>🔐 Recuperación de Contraseña</h1></div><div class='content'><p>Hola <strong>{{ $('Buscar Email Usuario').item.json.usuario }}</strong>,</p><p>Hemos recibido una solicitud para restablecer tu contraseña del Dashboard.</p><p>Haz clic en el siguiente botón para crear una nueva contraseña:</p><p style='text-align:center'><a href='TU_DOMINIO/reset-password.html?token={{ $('Generar Token').item.json.data }}&user={{ $('Buscar Email Usuario').item.json.usuario }}' class='btn'>Restablecer Contraseña</a></p><p style='color:#64748b;font-size:14px'>⏰ Este enlace expirará en <strong>1 hora</strong>.</p><p style='color:#64748b;font-size:14px'>Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p></div><div class='footer'><p>© 2026 Dashboard Stats - Todos los derechos reservados</p></div></div></body></html>",
+                "options": {}
+            },
+            "id": "send-email",
+            "name": "Enviar Email Reset",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1340,
+                300
+            ],
+            "credentials": {
+                "smtp": {
+                    "id": "TU_SMTP_CREDENTIAL_ID",
+                    "name": "SMTP Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'success', message: 'Se ha enviado un correo con instrucciones para restablecer tu contraseña' }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-reset-success",
+            "name": "Reset Solicitado OK",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1560,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'success', message: 'Si el usuario existe, recibirás un correo con instrucciones' }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-user-not-found",
+            "name": "Usuario No Encontrado",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "confirm-password-reset",
+                "responseMode": "responseNode",
+                "options": {
+                    "allowedOrigins": "*"
+                }
+            },
+            "id": "webhook-confirm-reset",
+            "name": "Webhook Confirmar Reset",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                240,
+                700
+            ],
+            "webhookId": "confirm-reset-webhook"
+        },
+        {
+            "parameters": {
+                "documentId": {
+                    "__rl": true,
+                    "value": "TU_SPREADSHEET_ID",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Usuarios",
+                    "mode": "list"
+                },
+                "filtersUI": {
+                    "values": [
+                        {
+                            "lookupColumn": "usuario",
+                            "lookupValue": "={{ $json.body.usuario }}"
+                        },
+                        {
+                            "lookupColumn": "reset_token",
+                            "lookupValue": "={{ $json.body.token }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "sheets-validar-token",
+            "name": "Validar Token",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                460,
+                700
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "TU_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-token-valid",
+                            "leftValue": "={{ $json.reset_token }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty"
+                            }
+                        },
+                        {
+                            "id": "condition-token-not-expired",
+                            "leftValue": "={{ new Date($json.reset_token_expiry) > new Date() }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "true"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-token-valid",
+            "name": "Token Válido?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                680,
+                700
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "documentId": {
+                    "__rl": true,
+                    "value": "TU_SPREADSHEET_ID",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Usuarios",
+                    "mode": "list"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "clave": "={{ $('Webhook Confirmar Reset').item.json.body.nueva_clave }}",
+                        "reset_token": "",
+                        "reset_token_expiry": ""
+                    }
+                },
+                "options": {
+                    "cellFormat": "USER_ENTERED"
+                },
+                "filtersUI": {
+                    "values": [
+                        {
+                            "lookupColumn": "usuario",
+                            "lookupValue": "={{ $('Webhook Confirmar Reset').item.json.body.usuario }}"
+                        }
+                    ]
+                }
+            },
+            "id": "sheets-actualizar-password",
+            "name": "Actualizar Password",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                900,
+                600
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "TU_CREDENTIAL_ID",
+                    "name": "Google Sheets Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'success', message: 'Contraseña actualizada correctamente' }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-password-updated",
+            "name": "Password Actualizado",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                1120,
+                600
+            ]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'error', message: 'Token inválido o expirado' }) }}",
+                "options": {
+                    "responseCode": 400,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "response-token-invalid",
+            "name": "Token Inválido",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                900,
+                800
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Login": {
+            "main": [
+                [
+                    {
+                        "node": "Buscar Usuario",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Buscar Usuario": {
+            "main": [
+                [
+                    {
+                        "node": "Validar Password",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validar Password": {
+            "main": [
+                [
+                    {
+                        "node": "Login Exitoso",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Login Fallido",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook Solicitar Reset": {
+            "main": [
+                [
+                    {
+                        "node": "Buscar Email Usuario",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Buscar Email Usuario": {
+            "main": [
+                [
+                    {
+                        "node": "Usuario Existe?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Usuario Existe?": {
+            "main": [
+                [
+                    {
+                        "node": "Generar Token",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Usuario No Encontrado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generar Token": {
+            "main": [
+                [
+                    {
+                        "node": "Guardar Token en Sheet",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Guardar Token en Sheet": {
+            "main": [
+                [
+                    {
+                        "node": "Enviar Email Reset",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Enviar Email Reset": {
+            "main": [
+                [
+                    {
+                        "node": "Reset Solicitado OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook Confirmar Reset": {
+            "main": [
+                [
+                    {
+                        "node": "Validar Token",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validar Token": {
+            "main": [
+                [
+                    {
+                        "node": "Token Válido?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Token Válido?": {
+            "main": [
+                [
+                    {
+                        "node": "Actualizar Password",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Token Inválido",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Actualizar Password": {
+            "main": [
+                [
+                    {
+                        "node": "Password Actualizado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 3,
+    "pinData": {}
+}

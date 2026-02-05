@@ -35,7 +35,7 @@ var InputValidator = (function () {
      */
     function validateLoginCredentials(username, password) {
         // ⚠️ MODO DESARROLLO: Cambiar a false cuando el login de n8n esté listo
-        var DEV_MODE_BYPASS_VALIDATION = true;
+        var DEV_MODE_BYPASS_VALIDATION = false;
 
         if (DEV_MODE_BYPASS_VALIDATION) {
             console.warn('⚠️ DEV MODE: Validación bypass activa - Desactivar en producción');
