@@ -126,12 +126,6 @@
         if (conversationsToggle !== null) {
             conversationsToggle.addEventListener('click', toggleConversationsPanel);
         }
-
-        // Event listener para el botón "Volver" en móvil (chat)
-        var backToListBtn = document.getElementById('back-to-list-btn');
-        if (backToListBtn !== null) {
-            backToListBtn.addEventListener('click', hideChatMessages);
-        }
     }
 
     /**
@@ -156,25 +150,239 @@
         }
     }
 
+    // =========================================================================
+    // SISTEMA DE PESTAÑAS (TABS)
+    // =========================================================================
+
     /**
-     * Muestra el panel de mensajes y oculta la lista (para móvil).
+     * Cambia entre pestañas del dashboard.
+     * 
+     * @param {string} tabName - Nombre del tab a mostrar ('resumen' o 'llamadas').
+     * @param {HTMLElement} clickedElement - Elemento de navegación clickeado.
      */
-    function showChatMessages() {
-        var chatContainer = document.querySelector('.chat-container');
-        if (chatContainer) {
-            chatContainer.classList.add('showing-messages');
+    function switchTab(tabName, clickedElement) {
+        // Ocultar todos los tabs
+        var allTabs = document.querySelectorAll('.tab-content');
+        allTabs.forEach(function (tab) {
+            tab.classList.remove('active');
+        });
+
+        // Quitar clase active de todos los enlaces de navegación
+        var allNavLinks = document.querySelectorAll('.sidebar nav .nav-link');
+        allNavLinks.forEach(function (link) {
+            link.classList.remove('active');
+        });
+
+        // Mostrar el tab seleccionado
+        var selectedTab = document.getElementById('tab-' + tabName);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+
+        // Marcar enlace como activo
+        if (clickedElement) {
+            clickedElement.classList.add('active');
+        }
+
+        // Si es el tab de llamadas, cargar los datos
+        if (tabName === 'llamadas') {
+            loadCallHistory();
         }
     }
 
+    // Exponer switchTab globalmente para onclick en HTML
+    // @ts-ignore
+    window.switchTab = switchTab;
+
+    // =========================================================================
+    // HISTORIAL DE LLAMADAS
+    // =========================================================================
+
+    /** @type {Array<Object>} */
+    var loadedCalls = [];
+
     /**
-     * Oculta el panel de mensajes y muestra la lista (para móvil).
+     * Carga el historial de llamadas desde la API.
      */
-    function hideChatMessages() {
-        var chatContainer = document.querySelector('.chat-container');
-        if (chatContainer) {
-            chatContainer.classList.remove('showing-messages');
+    function loadCallHistory() {
+        var tableBody = document.getElementById('calls-table-body');
+        if (!tableBody) return;
+
+        // Mostrar loading
+        tableBody.innerHTML = '<tr><td colspan="7" class="calls-loading">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" ' +
+            'stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>' +
+            'Cargando llamadas...</td></tr>';
+
+        ApiClient.get(AppConfig.API_ENDPOINTS.RETELL_CALLS)
+            .then(function (response) {
+                console.log('RETELL_CALLS response:', response); // Debug log
+                // La API devuelve { data: [...] } no { calls: [...] }
+                if (response && response.data) {
+                    loadedCalls = response.data;
+                    renderCallsTable(loadedCalls);
+                } else if (response && Array.isArray(response)) {
+                    // Si la respuesta es directamente un array
+                    loadedCalls = response;
+                    renderCallsTable(loadedCalls);
+                } else {
+                    renderCallsTable([]);
+                }
+            })
+            .catch(function (error) {
+                console.error('Error cargando historial de llamadas:', error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" ' +
+                    'stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle>' +
+                    '<line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' +
+                    '<p>Error al cargar las llamadas. Intenta de nuevo.</p></td></tr>';
+            });
+    }
+
+    /**
+     * Renderiza la tabla de historial de llamadas.
+     * 
+     * @param {Array<Object>} calls - Lista de llamadas.
+     */
+    function renderCallsTable(calls) {
+        var tableBody = document.getElementById('calls-table-body');
+        if (!tableBody) return;
+
+        if (!calls || calls.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" ' +
+                'stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"></path></svg>' +
+                '<p>No hay llamadas registradas.</p></td></tr>';
+            return;
+        }
+
+        var rows = calls.map(function (call, index) {
+            // Usar los campos reales de la API (mismos que buildRecordingItemHtml)
+            var date = new Date(call.date || call.start_timestamp || call.created_at || new Date());
+            var dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            var timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+            // Teléfono - intentar varios campos posibles
+            var phone = call.phone || call.from_number || call.to_number || call.caller_number || 'N/A';
+
+            // Duración - puede venir en diferentes formatos
+            var duration = '0:00';
+            if (call.duration_ms) {
+                duration = formatCallDuration(call.duration_ms);
+            } else if (call.duration) {
+                // Si duration está en segundos
+                duration = formatCallDuration(call.duration * 1000);
+            } else if (call.call_duration) {
+                duration = formatCallDuration(call.call_duration * 1000);
+            }
+
+            // Estado de la llamada
+            var status = call.status || call.call_status || 'completed';
+            var statusClass = getCallStatusClass(status);
+            var statusLabel = getCallStatusLabel(status);
+
+            // Grabación - usar recording_url (campo de la API)
+            var audioUrl = call.recording_url || '';
+            var recordingHtml = audioUrl
+                ? '<audio controls class="call-audio"><source src="' + audioUrl + '" type="audio/wav"></audio>'
+                : '<span class="text-muted">-</span>';
+
+
+            // Transcripción - usar transcript (campo de la API)
+            var transcript = call.transcript || '';
+            var hasTranscript = transcript && transcript !== 'Sin transcripción';
+            var transcriptHtml = hasTranscript
+                ? '<button class="transcript-toggle" onclick="toggleTranscript(' + index + ')">Ver</button>' +
+                '<div id="transcript-' + index + '" class="transcript-content">' + escapeHtml(transcript) + '</div>'
+                : '<span class="text-muted">-</span>';
+
+            return '<tr>' +
+                '<td>' + dateStr + '</td>' +
+                '<td>' + timeStr + '</td>' +
+                '<td class="call-phone">' + escapeHtml(phone) + '</td>' +
+                '<td class="call-duration">' + duration + '</td>' +
+                '<td><span class="call-status ' + statusClass + '">' + statusLabel + '</span></td>' +
+                '<td class="hide-mobile">' + recordingHtml + '</td>' +
+                '<td class="hide-mobile">' + transcriptHtml + '</td>' +
+                '</tr>';
+        });
+
+        tableBody.innerHTML = rows.join('');
+    }
+
+    /**
+     * Formatea la duración de una llamada.
+     * 
+     * @param {number} durationMs - Duración en milisegundos.
+     * @returns {string} Duración formateada.
+     */
+    function formatCallDuration(durationMs) {
+        if (!durationMs || durationMs === 0) return '0:00';
+
+        var totalSeconds = Math.floor(durationMs / 1000);
+        var minutes = Math.floor(totalSeconds / 60);
+        var seconds = totalSeconds % 60;
+
+        return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    }
+
+    /**
+     * Obtiene la clase CSS para el estado de llamada.
+     * 
+     * @param {string} status - Estado de la llamada.
+     * @returns {string} Clase CSS.
+     */
+    function getCallStatusClass(status) {
+        var statusMap = {
+            'completed': 'completed',
+            'ended': 'completed',
+            'answered': 'completed',
+            'missed': 'missed',
+            'no-answer': 'missed',
+            'failed': 'failed',
+            'busy': 'failed',
+            'in-progress': 'in-progress',
+            'ringing': 'in-progress'
+        };
+        return statusMap[status] || 'completed';
+    }
+
+    /**
+     * Obtiene la etiqueta legible para el estado de llamada.
+     * 
+     * @param {string} status - Estado de la llamada.
+     * @returns {string} Etiqueta.
+     */
+    function getCallStatusLabel(status) {
+        var labelMap = {
+            'completed': 'Completada',
+            'ended': 'Terminada',
+            'answered': 'Contestada',
+            'missed': 'Perdida',
+            'no-answer': 'Sin respuesta',
+            'failed': 'Fallida',
+            'busy': 'Ocupado',
+            'in-progress': 'En curso',
+            'ringing': 'Sonando'
+        };
+        return labelMap[status] || status;
+    }
+
+    /**
+     * Alterna la visibilidad de una transcripción.
+     * 
+     * @param {number} index - Índice de la llamada.
+     */
+    function toggleTranscript(index) {
+        var element = document.getElementById('transcript-' + index);
+        if (element) {
+            element.classList.toggle('show');
         }
     }
+
+    // Exponer toggleTranscript globalmente
+    // @ts-ignore
+    window.toggleTranscript = toggleTranscript;
 
     // =========================================================================
     // GESTION DEL LOGIN
@@ -342,9 +550,6 @@
                 recordingsContainer.innerHTML = '<p class="empty">Error al cargar grabaciones.</p>';
             }
         }
-
-        // Cargar conversaciones de WhatsApp
-        loadConversations();
     }
 
     /**
@@ -596,20 +801,17 @@
         var conversation = loadedConversations[index];
         if (!conversation) return;
 
-        // Actualizar header (preservar botón volver)
-        var headerName = document.querySelector('#chat-messages-header .chat-contact-name');
-        if (headerName) {
-            headerName.textContent = conversation.phoneNumber;
+        // Actualizar header
+        var header = document.getElementById('chat-messages-header');
+        if (header) {
+            header.innerHTML = '<span class="chat-contact-name">' + conversation.phoneNumber + '</span>';
         }
-
-        // Mostrar panel de mensajes (para móvil)
-        showChatMessages();
 
         renderConversationMessages(conversation.messages);
     }
 
     /**
-     * Renderiza los mensajes de una conversación con avatares y etiquetas.
+     * Renderiza los mensajes de una conversación.
      * 
      * @param {WhatsAppMessage[]} messages - Lista de mensajes.
      */
@@ -618,92 +820,29 @@
         if (!container) return;
 
         if (!messages || messages.length === 0) {
-            container.innerHTML = '<div class="chat-empty-state">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>' +
-                '</svg>' +
-                '<p>No hay mensajes en esta conversación.</p>' +
-                '</div>';
+            container.innerHTML = '<p class="empty">No hay mensajes en esta conversación.</p>';
             return;
         }
 
-        /** @type {string[]} */
-        var htmlParts = [];
-        /** @type {string|null} */
-        var lastDate = null;
-
-        messages.forEach(function (msg) {
-            var msgDate = new Date(msg.date);
-            var dateKey = msgDate.toDateString();
-
-            // Añadir separador de fecha si cambia el día
-            if (lastDate !== dateKey) {
-                htmlParts.push(
-                    '<div class="date-separator">' +
-                    '  <span class="date-separator-text">' + formatMessageDate(msgDate) + '</span>' +
-                    '</div>'
-                );
-                lastDate = dateKey;
-            }
-
-            var time = msgDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-            var isClient = msg.direction === 'inbound';
-            var senderType = isClient ? 'client' : 'bot';
-            var senderLabel = isClient ? 'Cliente' : 'Bot';
+        var htmlParts = messages.map(function (msg) {
+            var time = new Date(msg.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             var statusClass = msg.direction === 'outbound' ? 'status-' + msg.status : '';
 
-            // Avatar icon
-            var avatarIcon = isClient
-                ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
-                : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>';
-
-            htmlParts.push(
-                '<div class="message-wrapper ' + msg.direction + '">' +
-                '  <div class="message-avatar ' + senderType + '">' + avatarIcon + '</div>' +
-                '  <div class="message-content">' +
-                '    <span class="message-sender ' + senderType + '">' + senderLabel + '</span>' +
-                '    <div class="message-bubble ' + msg.direction + '">' +
-                '      <div class="message-body">' + escapeHtml(msg.body) + '</div>' +
-                '      <div class="message-meta">' +
-                '        <span class="message-time">' + time + '</span>' +
-                '        <span class="message-status ' + statusClass + '"></span>' +
-                '      </div>' +
-                '    </div>' +
-                '  </div>' +
+            return [
+                '<div class="message-bubble ' + msg.direction + '">',
+                '  <div class="message-body">' + escapeHtml(msg.body) + '</div>',
+                '  <div class="message-time">',
+                '    ' + time,
+                '    <span class="message-status ' + statusClass + '"></span>',
+                '  </div>',
                 '</div>'
-            );
+            ].join('');
         });
 
         container.innerHTML = htmlParts.join('');
 
         // Scroll al final
         container.scrollTop = container.scrollHeight;
-    }
-
-    /**
-     * Formatea la fecha para los separadores de mensajes.
-     * 
-     * @param {Date} date - Fecha a formatear.
-     * @returns {string} Fecha formateada.
-     */
-    function formatMessageDate(date) {
-        var now = new Date();
-        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        var yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        var msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-        if (msgDay.getTime() === today.getTime()) {
-            return 'Hoy';
-        } else if (msgDay.getTime() === yesterday.getTime()) {
-            return 'Ayer';
-        } else {
-            return date.toLocaleDateString('es-ES', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long'
-            });
-        }
     }
 
     /**
