@@ -40,12 +40,19 @@
  */
 
 /**
+ * @typedef {Object} DevModeConfig
+ * @property {boolean} BYPASS_LOGIN - Bypass del login (permite acceso sin credenciales válidas)
+ * @property {boolean} BYPASS_VALIDATION - Bypass de validación de credenciales
+ */
+
+/**
  * @typedef {Object} AppConfiguration
  * @property {ApiEndpoints} API_ENDPOINTS - Endpoints de APIs
  * @property {string} RETELL_AGENT_ID - ID del agente de Retell AI
  * @property {SecurityConfig} SECURITY - Configuración de seguridad
  * @property {ValidationConfig} VALIDATION - Reglas de validación
  * @property {StorageKeys} STORAGE_KEYS - Claves de almacenamiento
+ * @property {DevModeConfig} [DEV_MODE] - Configuración de modo desarrollo (opcional)
  */
 
 // =============================================================================

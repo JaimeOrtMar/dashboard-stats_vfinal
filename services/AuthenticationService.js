@@ -10,25 +10,21 @@ var AuthenticationService = (function () {
     'use strict';
 
     /**
-     * Intenta autenticar al usuario con las credenciales proporcionadas.
-     * Envia las credenciales al webhook de n8n y procesa la respuesta.
+     * Autentica al usuario contra el servidor.
+     * En modo desarrollo, permite bypass del login.
      * 
-     * @param {string} username - Nombre de usuario saneado.
-     * @param {string} password - Contraseña saneada.
-     * @returns {Promise<AuthResult>} Resultado de la autenticacion.
+     * @param {string} username - Nombre de usuario.
+     * @param {string} password - Contraseña.
+     * @returns {Promise<AuthResult>} Resultado de la autenticación.
      */
     async function authenticate(username, password) {
-        // ⚠️ MODO DESARROLLO: Cambiar a false cuando el login de n8n esté listo
-        var DEV_MODE_BYPASS_LOGIN = true;
-
-        if (DEV_MODE_BYPASS_LOGIN) {
-            console.warn('⚠️ DEV MODE: Login bypass activo - Desactivar en producción');
+        // Usar configuración centralizada de DEV_MODE
+        if (AppConfig.DEV_MODE && AppConfig.DEV_MODE.BYPASS_LOGIN) {
+            console.warn('⚠️ DEV MODE: Login bypass active - Disable in production');
             return {
                 success: true,
-                message: 'Autenticacion exitosa (DEV MODE).',
-                userData: {
-                    username: username || 'dev_user'
-                }
+                message: 'Authentication successful (DEV MODE).',
+                userData: { username: username || 'dev_user' }
             };
         }
 

@@ -65,5 +65,16 @@ var AppConfig = {
     STORAGE_KEYS: {
         SESSION: 'dashboard_session',
         LOGIN_ATTEMPTS: 'login_attempts'
+    },
+
+    /**
+     * Configuración de modo desarrollo.
+     * ⚠️ IMPORTANTE: Cambiar a false en producción.
+     */
+    DEV_MODE: {
+        /** Bypass del login (permite acceso sin credenciales válidas). */
+        BYPASS_LOGIN: true,
+        /** Bypass de validación de credenciales. */
+        BYPASS_VALIDATION: true
     }
 };
