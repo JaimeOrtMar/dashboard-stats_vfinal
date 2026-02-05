@@ -216,18 +216,36 @@
 
         ApiClient.get(AppConfig.API_ENDPOINTS.RETELL_CALLS)
             .then(function (response) {
-                console.log('RETELL_CALLS response:', response); // Debug log
-                // La API devuelve { data: [...] } no { calls: [...] }
-                if (response && response.data) {
-                    loadedCalls = response.data;
-                    renderCallsTable(loadedCalls);
-                } else if (response && Array.isArray(response)) {
-                    // Si la respuesta es directamente un array
-                    loadedCalls = response;
-                    renderCallsTable(loadedCalls);
-                } else {
-                    renderCallsTable([]);
+                // Si la respuesta viene como string, parsearla a JSON
+                var parsedResponse = response;
+                if (typeof response === 'string') {
+                    try {
+                        parsedResponse = JSON.parse(response);
+                    } catch (parseError) {
+                        renderCallsTable([]);
+                        return;
+                    }
                 }
+
+                // La API devuelve { success: true, data: [...] }
+                var allCalls = [];
+                if (parsedResponse && parsedResponse.data && Array.isArray(parsedResponse.data)) {
+                    allCalls = parsedResponse.data;
+                } else if (parsedResponse && Array.isArray(parsedResponse)) {
+                    allCalls = parsedResponse;
+                }
+
+                // Filtrar por agent_id configurado
+                var agentId = AppConfig.RETELL_AGENT_ID;
+                if (agentId) {
+                    loadedCalls = allCalls.filter(function (call) {
+                        return call.agent_id === agentId;
+                    });
+                } else {
+                    loadedCalls = allCalls;
+                }
+
+                renderCallsTable(loadedCalls);
             })
             .catch(function (error) {
                 console.error('Error cargando historial de llamadas:', error);
@@ -246,7 +264,9 @@
      */
     function renderCallsTable(calls) {
         var tableBody = document.getElementById('calls-table-body');
-        if (!tableBody) return;
+        if (!tableBody) {
+            return;
+        }
 
         if (!calls || calls.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
@@ -256,58 +276,62 @@
             return;
         }
 
-        var rows = calls.map(function (call, index) {
-            // Usar los campos reales de la API (mismos que buildRecordingItemHtml)
-            var date = new Date(call.date || call.start_timestamp || call.created_at || new Date());
-            var dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            var timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        try {
+            var rows = calls.map(function (call, index) {
+                // Usar los campos reales de la API
+                var date = new Date(call.date || call.start_timestamp || call.created_at || new Date());
+                var dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                var timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-            // Teléfono - intentar varios campos posibles
-            var phone = call.phone || call.from_number || call.to_number || call.caller_number || 'N/A';
+                // Teléfono - la API de Retell no incluye este campo
+                var phone = call.phone || call.from_number || call.to_number || call.caller_number || '-';
 
-            // Duración - puede venir en diferentes formatos
-            var duration = '0:00';
-            if (call.duration_ms) {
-                duration = formatCallDuration(call.duration_ms);
-            } else if (call.duration) {
-                // Si duration está en segundos
-                duration = formatCallDuration(call.duration * 1000);
-            } else if (call.call_duration) {
-                duration = formatCallDuration(call.call_duration * 1000);
-            }
+                // Duración - puede venir en diferentes formatos
+                var duration = '0:00';
+                if (call.duration_ms) {
+                    duration = formatCallDuration(call.duration_ms);
+                } else if (call.duration) {
+                    // Si duration está en segundos
+                    duration = formatCallDuration(call.duration * 1000);
+                } else if (call.call_duration) {
+                    duration = formatCallDuration(call.call_duration * 1000);
+                }
 
-            // Estado de la llamada
-            var status = call.status || call.call_status || 'completed';
-            var statusClass = getCallStatusClass(status);
-            var statusLabel = getCallStatusLabel(status);
+                // Estado de la llamada
+                var status = call.status || call.call_status || 'completed';
+                var statusClass = getCallStatusClass(status);
+                var statusLabel = getCallStatusLabel(status);
 
-            // Grabación - usar recording_url (campo de la API)
-            var audioUrl = call.recording_url || '';
-            var recordingHtml = audioUrl
-                ? '<audio controls class="call-audio"><source src="' + audioUrl + '" type="audio/wav"></audio>'
-                : '<span class="text-muted">-</span>';
+                // Grabación - usar recording_url (campo de la API)
+                var audioUrl = call.recording_url || '';
+                var recordingHtml = audioUrl
+                    ? '<audio controls class="call-audio"><source src="' + audioUrl + '" type="audio/wav"></audio>'
+                    : '<span class="text-muted">-</span>';
 
+                // Transcripción - usar transcript (campo de la API)
+                var transcript = call.transcript || '';
+                var hasTranscript = transcript && transcript !== 'Sin transcripción';
+                var transcriptHtml = hasTranscript
+                    ? '<button class="transcript-toggle" onclick="toggleTranscript(' + index + ')">Ver</button>' +
+                    '<div id="transcript-' + index + '" class="transcript-content">' + escapeHtml(transcript) + '</div>'
+                    : '<span class="text-muted">-</span>';
 
-            // Transcripción - usar transcript (campo de la API)
-            var transcript = call.transcript || '';
-            var hasTranscript = transcript && transcript !== 'Sin transcripción';
-            var transcriptHtml = hasTranscript
-                ? '<button class="transcript-toggle" onclick="toggleTranscript(' + index + ')">Ver</button>' +
-                '<div id="transcript-' + index + '" class="transcript-content">' + escapeHtml(transcript) + '</div>'
-                : '<span class="text-muted">-</span>';
+                return '<tr>' +
+                    '<td>' + dateStr + '</td>' +
+                    '<td>' + timeStr + '</td>' +
+                    '<td class="call-phone">' + escapeHtml(phone) + '</td>' +
+                    '<td class="call-duration">' + duration + '</td>' +
+                    '<td><span class="call-status ' + statusClass + '">' + statusLabel + '</span></td>' +
+                    '<td class="hide-mobile">' + recordingHtml + '</td>' +
+                    '<td class="hide-mobile">' + transcriptHtml + '</td>' +
+                    '</tr>';
+            });
 
-            return '<tr>' +
-                '<td>' + dateStr + '</td>' +
-                '<td>' + timeStr + '</td>' +
-                '<td class="call-phone">' + escapeHtml(phone) + '</td>' +
-                '<td class="call-duration">' + duration + '</td>' +
-                '<td><span class="call-status ' + statusClass + '">' + statusLabel + '</span></td>' +
-                '<td class="hide-mobile">' + recordingHtml + '</td>' +
-                '<td class="hide-mobile">' + transcriptHtml + '</td>' +
-                '</tr>';
-        });
-
-        tableBody.innerHTML = rows.join('');
+            tableBody.innerHTML = rows.join('');
+        } catch (error) {
+            tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
+                '<p>Error al mostrar las llamadas.</p></td></tr>';
+        }
     }
 
     /**

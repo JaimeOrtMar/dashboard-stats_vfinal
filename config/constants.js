@@ -27,6 +27,11 @@ var AppConfig = {
     },
 
     /**
+     * ID del agente de Retell AI para filtrar llamadas.
+     */
+    RETELL_AGENT_ID: 'agent_1c27d89a3b88972d6ef93738f1',
+
+    /**
      * Configuracion de seguridad del sistema.
      */
     SECURITY: {
