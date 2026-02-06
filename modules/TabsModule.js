@@ -76,4 +76,5 @@ var TabsModule = (function () {
 })();
 
 // Exponer switchTab globalmente para onclick en HTML
+// @ts-ignore
 window.switchTab = TabsModule.switchTab;

@@ -170,7 +170,7 @@ var AuthModule = (function () {
     /**
      * Maneja un login exitoso.
      * 
-     * @param {Object} authResult - Resultado de la autenticación.
+     * @param {{success: boolean, userData?: any}} authResult - Resultado de la autenticación.
      */
     function handleSuccessfulLogin(authResult) {
         RateLimiter.resetAttempts();
@@ -186,7 +186,7 @@ var AuthModule = (function () {
     /**
      * Maneja un login fallido.
      * 
-     * @param {Object} authResult - Resultado de la autenticación.
+     * @param {{success: boolean, message?: string}} authResult - Resultado de la autenticación.
      */
     function handleFailedLogin(authResult) {
         RateLimiter.recordFailedAttempt();
@@ -462,6 +462,10 @@ var AuthModule = (function () {
         }
     }
 
+    /**
+     * @param {string} message
+     * @param {string} type
+     */
     function showRecoveryMessage(message, type) {
         if (recoveryMessageContainer !== null) {
             recoveryMessageContainer.textContent = message;
@@ -478,6 +482,10 @@ var AuthModule = (function () {
         }
     }
 
+    /**
+     * @param {string} message
+     * @param {string} type
+     */
     function showResetMessage(message, type) {
         if (resetMessageContainer !== null) {
             resetMessageContainer.textContent = message;
@@ -497,7 +505,9 @@ var AuthModule = (function () {
 })();
 
 // Exponer logout globalmente para uso en HTML
+// @ts-ignore
 window.logout = AuthModule.logout;
+// @ts-ignore
 window.loadData = function () {
     DashboardModule.loadDashboardData();
 };

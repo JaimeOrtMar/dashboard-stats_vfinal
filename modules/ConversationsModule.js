@@ -11,7 +11,7 @@
 var ConversationsModule = (function () {
     'use strict';
 
-    /** @type {Array} Variable para almacenar las conversaciones cargadas */
+    /** @type {Array<any>} Variable para almacenar las conversaciones cargadas */
     var loadedConversations = [];
 
     /**
@@ -67,7 +67,7 @@ var ConversationsModule = (function () {
     /**
      * Renderiza la lista de conversaciones.
      * 
-     * @param {Array} conversations - Lista de conversaciones.
+     * @param {Array<any>} conversations - Lista de conversaciones.
      */
     function renderConversationsList(conversations) {
         var container = document.getElementById('chat-list-items');
@@ -139,7 +139,7 @@ var ConversationsModule = (function () {
     /**
      * Renderiza los mensajes de una conversación.
      * 
-     * @param {Array} messages - Lista de mensajes.
+     * @param {Array<any>} messages - Lista de mensajes.
      */
     function renderConversationMessages(messages) {
         var container = document.getElementById('chat-messages-body');

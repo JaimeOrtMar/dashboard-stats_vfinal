@@ -82,7 +82,7 @@ var DashboardModule = (function () {
     /**
      * Actualiza los indicadores de estadísticas en el dashboard.
      * 
-     * @param {Object} data - Datos recibidos de la API.
+     * @param {{whatsappConversaciones?: number, calls?: {inbound?: number, outbound?: number, minutes?: number}}} data - Datos recibidos de la API.
      */
     function updateStatisticsDisplay(data) {
         var whatsappCount = String(data.whatsappConversaciones || '0');
@@ -92,14 +92,14 @@ var DashboardModule = (function () {
         DomHelper.setTextContent('val-in', String(callsData.inbound || '0'));
         DomHelper.setTextContent('val-out', String(callsData.outbound || '0'));
 
-        var formattedTime = formatMinutesToReadable(callsData.minutes);
+        var formattedTime = formatMinutesToReadable(callsData.minutes || 0);
         DomHelper.setTextContent('val-mins', formattedTime);
     }
 
     /**
      * Actualiza la lista de grabaciones en el dashboard.
      * 
-     * @param {Object} data - Datos recibidos de la API.
+     * @param {{data?: Array<{date?: string, audioUrl?: string, transcription?: string}>}} data - Datos recibidos de la API.
      */
     function updateRecordingsList(data) {
         var recordingsContainer = document.getElementById('recordings-list');
@@ -108,8 +108,8 @@ var DashboardModule = (function () {
             return;
         }
 
-        var recordings = data.data;
-        var hasRecordings = recordings && recordings.length > 0;
+        var recordings = data.data || [];
+        var hasRecordings = recordings.length > 0;
 
         if (!hasRecordings) {
             recordingsContainer.innerHTML = '<p class="empty">No hay grabaciones o transcripciones disponibles.</p>';
@@ -126,11 +126,11 @@ var DashboardModule = (function () {
     /**
      * Construye el HTML para un item de grabación individual.
      * 
-     * @param {Object} recordingItem - Datos de la grabación.
+     * @param {{date?: string, audioUrl?: string, transcription?: string}} recordingItem - Datos de la grabación.
      * @returns {string} HTML del item.
      */
     function buildRecordingItemHtml(recordingItem) {
-        var formattedDate = new Date(recordingItem.date).toLocaleString();
+        var formattedDate = new Date(recordingItem.date || Date.now()).toLocaleString();
         var audioUrl = recordingItem.audioUrl || '';
         var transcriptionText = recordingItem.transcription || 'Sin transcripcion disponible.';
 

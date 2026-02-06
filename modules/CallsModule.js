@@ -8,10 +8,29 @@
  * @requires AppConfig
  */
 
+/**
+ * @typedef {Object} CallData
+ * @property {string} [agent_id]
+ * @property {string} [date]
+ * @property {number} [start_timestamp]
+ * @property {string} [created_at]
+ * @property {string} [phone]
+ * @property {string} [from_number]
+ * @property {string} [to_number]
+ * @property {string} [caller_number]
+ * @property {number} [duration_ms]
+ * @property {number} [duration]
+ * @property {number} [call_duration]
+ * @property {string} [status]
+ * @property {string} [call_status]
+ * @property {string} [recording_url]
+ * @property {string} [transcript]
+ */
+
 var CallsModule = (function () {
     'use strict';
 
-    /** @type {Array<Object>} */
+    /** @type {CallData[]} */
     var loadedCalls = [];
 
     /** @type {Array<string>} Almacena las transcripciones formateadas para el modal */
@@ -51,7 +70,7 @@ var CallsModule = (function () {
 
                 var agentId = AppConfig.RETELL_AGENT_ID;
                 if (agentId) {
-                    loadedCalls = allCalls.filter(function (call) {
+                    loadedCalls = allCalls.filter(/** @param {CallData} call */ function (call) {
                         return call.agent_id === agentId;
                     });
                 } else {
@@ -62,7 +81,7 @@ var CallsModule = (function () {
             })
             .catch(function (error) {
                 console.error('Error cargando historial de llamadas:', error);
-                tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
+                if (tableBody) tableBody.innerHTML = '<tr><td colspan="7" class="calls-table-empty">' +
                     '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" ' +
                     'stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle>' +
                     '<line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>' +
@@ -73,7 +92,7 @@ var CallsModule = (function () {
     /**
      * Renderiza la tabla de historial de llamadas.
      * 
-     * @param {Array<Object>} calls - Lista de llamadas.
+     * @param {CallData[]} calls - Lista de llamadas.
      */
     function renderCallsTable(calls) {
         var tableBody = document.getElementById('calls-table-body');
@@ -165,6 +184,7 @@ var CallsModule = (function () {
      * @returns {string} Clase CSS.
      */
     function getCallStatusClass(status) {
+        /** @type {{[key: string]: string}} */
         var statusMap = {
             'completed': 'completed',
             'ended': 'completed',
@@ -186,6 +206,7 @@ var CallsModule = (function () {
      * @returns {string} Etiqueta.
      */
     function getCallStatusLabel(status) {
+        /** @type {{[key: string]: string}} */
         var labelMap = {
             'completed': 'Completada',
             'ended': 'Terminada',
@@ -251,5 +272,7 @@ var CallsModule = (function () {
 })();
 
 // Exponer para uso en HTML onclick
+// @ts-ignore
 window.openTranscriptModal = CallsModule.openTranscriptModal;
+// @ts-ignore
 window.closeTranscriptModal = CallsModule.closeTranscriptModal;

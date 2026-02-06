@@ -15,12 +15,13 @@ var TranscriptFormatter = (function () {
      * - Texto con prefijos: "Agent: mensaje\nUser: mensaje"
      * - Texto plano: se muestra como bloque formateado
      * 
-     * @param {string|Array|Object} transcript - Transcripción en varios formatos.
+     * @param {string|Array<any>|Object} transcript - Transcripción en varios formatos.
      * @returns {string} HTML formateado como conversación.
      */
     function format(transcript) {
         if (!transcript) return '';
 
+        /** @type {Array<{speaker: string, text: string}>} */
         var messages = [];
 
         // CASO 1: Si es un array de objetos (formato Retell)
@@ -64,8 +65,8 @@ var TranscriptFormatter = (function () {
     /**
      * Parsea un array de objetos de Retell.
      * 
-     * @param {Array} transcriptArray - Array de objetos de transcripción.
-     * @returns {Array} Array de mensajes parseados.
+     * @param {Array<any>} transcriptArray - Array de objetos de transcripción.
+     * @returns {Array<{speaker: string, text: string}>} Array de mensajes parseados.
      */
     function parseRetellArray(transcriptArray) {
         var messages = [];
@@ -93,7 +94,7 @@ var TranscriptFormatter = (function () {
                 text = item.message;
             } else if (item.words) {
                 // Formato Retell con array de palabras
-                text = item.words.map(function (w) { return w.word || w; }).join(' ');
+                text = item.words.map(/** @param {any} w */ function (w) { return w.word || w; }).join(' ');
             }
 
             if (text && text.trim()) {
@@ -111,7 +112,7 @@ var TranscriptFormatter = (function () {
      * Parsea una transcripción de texto para extraer mensajes.
      * 
      * @param {string} text - Texto de la transcripción.
-     * @returns {Array} Array de mensajes parseados.
+     * @returns {Array<{speaker: string, text: string}>} Array de mensajes parseados.
      */
     function parseTextTranscript(text) {
         var messages = [];
@@ -169,7 +170,7 @@ var TranscriptFormatter = (function () {
     /**
      * Genera el HTML de la conversación a partir de los mensajes.
      * 
-     * @param {Array} messages - Array de mensajes con speaker y text.
+     * @param {Array<{speaker: string, text: string}>} messages - Array de mensajes con speaker y text.
      * @returns {string} HTML de la conversación.
      */
     function generateConversationHtml(messages) {
