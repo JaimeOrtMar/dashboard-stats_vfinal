@@ -1,21 +1,17 @@
-/**
- * Cliente HTTP para comunicacion con APIs externas.
- * Centraliza la logica de peticiones y manejo de errores.
- * 
+﻿/**
+ * HTTP client for external APIs.
+ *
  * @file ApiClient.js
- * @description Proporciona metodos para realizar peticiones HTTP de forma consistente.
  */
 
 var ApiClient = (function () {
     'use strict';
 
     /**
-     * Realiza una peticion HTTP POST.
-     * 
      * @template T
-     * @param {string} url - URL del endpoint destino.
-     * @param {Object} data - Objeto con los datos a enviar en el cuerpo de la peticion.
-     * @returns {Promise<T|ApiErrorResponse>} Respuesta parseada como JSON o objeto de error.
+     * @param {string} url
+     * @param {Object} data
+     * @returns {Promise<T|ApiErrorResponse>}
      */
     async function post(url, data) {
         try {
@@ -27,19 +23,18 @@ var ApiClient = (function () {
                 body: JSON.stringify(data)
             });
 
+            var parsedBody = await parseResponseBody(response);
+
             if (!response.ok) {
-                console.error('ApiClient.post: Error HTTP', response.status, response.statusText);
                 return {
                     status: 'error',
-                    message: 'Error en la comunicacion con el servidor. Codigo: ' + response.status
+                    message: extractErrorMessage(parsedBody, response.status)
                 };
             }
 
-            var jsonResponse = await response.json();
-            return jsonResponse;
-
+            return /** @type {T} */ (parsedBody || {});
         } catch (networkError) {
-            console.error('ApiClient.post: Error de red', networkError);
+            console.error('ApiClient.post: network error', networkError);
             return {
                 status: 'error',
                 message: 'No se pudo conectar con el servidor. Verifica tu conexion a internet.'
@@ -48,34 +43,72 @@ var ApiClient = (function () {
     }
 
     /**
-     * Realiza una peticion HTTP GET.
-     * 
      * @template T
-     * @param {string} url - URL del endpoint destino.
-     * @returns {Promise<T|null>} Respuesta parseada como JSON o null si hay error.
+     * @param {string} url
+     * @returns {Promise<T|null>}
      */
     async function get(url) {
         try {
             var response = await fetch(url);
+            var parsedBody = await parseResponseBody(response);
 
             if (!response.ok) {
-                console.error('ApiClient.get: Error HTTP', response.status, response.statusText);
+                console.error('ApiClient.get: HTTP error', response.status, response.statusText);
                 return null;
             }
 
-            var jsonResponse = await response.json();
-            return jsonResponse;
-
+            return /** @type {T} */ (parsedBody);
         } catch (networkError) {
-            console.error('ApiClient.get: Error de red', networkError);
+            console.error('ApiClient.get: network error', networkError);
             return null;
         }
     }
 
-    // API publica del modulo
+    /**
+     * @param {Response} response
+     * @returns {Promise<any>}
+     */
+    async function parseResponseBody(response) {
+        var contentTypeHeader = response.headers.get('content-type') || '';
+        var isJson = contentTypeHeader.indexOf('application/json') !== -1;
+
+        if (isJson) {
+            try {
+                return await response.json();
+            } catch (jsonParseError) {
+                return null;
+            }
+        }
+
+        var textBody = await response.text();
+        if (!textBody) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(textBody);
+        } catch (parseError) {
+            return {
+                message: textBody
+            };
+        }
+    }
+
+    /**
+     * @param {any} responseBody
+     * @param {number} statusCode
+     * @returns {string}
+     */
+    function extractErrorMessage(responseBody, statusCode) {
+        if (responseBody && typeof responseBody.message === 'string' && responseBody.message.trim() !== '') {
+            return responseBody.message;
+        }
+
+        return 'Error en la comunicacion con el servidor. Codigo: ' + statusCode;
+    }
+
     return {
         post: post,
         get: get
     };
-
 })();

@@ -1,80 +1,117 @@
-/**
- * Módulo de navegación por pestañas.
- * Gestiona el sistema de tabs del dashboard.
- * 
+﻿/**
+ * Tab navigation module.
+ * Handles dashboard tab switches and high-level actions.
+ *
  * @file TabsModule.js
- * @requires CallsModule
  */
 
 var TabsModule = (function () {
     'use strict';
 
+    /** @type {boolean} */
+    var hasInitialized = false;
+
+    function initialize() {
+        if (hasInitialized) {
+            return;
+        }
+
+        hasInitialized = true;
+
+        var sidebarNav = document.querySelector('.sidebar nav');
+        if (sidebarNav !== null) {
+            sidebarNav.addEventListener('click', handleSidebarNavigationClick);
+        }
+
+        document.addEventListener('click', handleGlobalActionClick);
+    }
+
     /**
-     * Cambia entre pestañas del dashboard.
-     * 
-     * @param {string} tabName - Nombre del tab a mostrar ('resumen' o 'llamadas').
-     * @param {HTMLElement} clickedElement - Elemento de navegación clickeado.
+     * @param {MouseEvent} event
+     */
+    function handleSidebarNavigationClick(event) {
+        var target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        var navigationLink = target.closest('.nav-link[data-tab]');
+        if (navigationLink === null) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var tabName = navigationLink.getAttribute('data-tab');
+        if (!tabName) {
+            return;
+        }
+
+        switchTab(tabName, /** @type {HTMLElement} */ (navigationLink));
+    }
+
+    /**
+     * @param {MouseEvent} event
+     */
+    function handleGlobalActionClick(event) {
+        var target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        var actionElement = target.closest('[data-action]');
+        if (actionElement === null) {
+            return;
+        }
+
+        var actionName = actionElement.getAttribute('data-action');
+        if (!actionName) {
+            return;
+        }
+
+        if (actionName === 'logout') {
+            event.preventDefault();
+            AuthModule.logout();
+            return;
+        }
+
+        if (actionName === 'refresh-dashboard') {
+            event.preventDefault();
+            DashboardModule.loadDashboardData();
+        }
+    }
+
+    /**
+     * @param {string} tabName
+     * @param {HTMLElement} clickedElement
      */
     function switchTab(tabName, clickedElement) {
-        // Ocultar todos los tabs
         var allTabs = document.querySelectorAll('.tab-content');
         allTabs.forEach(function (tab) {
             tab.classList.remove('active');
         });
 
-        // Quitar clase active de todos los enlaces de navegación
         var allNavLinks = document.querySelectorAll('.sidebar nav .nav-link');
         allNavLinks.forEach(function (link) {
             link.classList.remove('active');
         });
 
-        // Mostrar el tab seleccionado
         var selectedTab = document.getElementById('tab-' + tabName);
-        if (selectedTab) {
+        if (selectedTab !== null) {
             selectedTab.classList.add('active');
         }
 
-        // Marcar enlace como activo
-        if (clickedElement) {
+        if (clickedElement !== null) {
             clickedElement.classList.add('active');
         }
 
-        // Si es el tab de llamadas, cargar los datos
         if (tabName === 'llamadas') {
             CallsModule.loadCallHistory();
         }
     }
 
-    /**
-     * Alterna la visibilidad del panel de conversaciones de WhatsApp.
-     */
-    function toggleConversationsPanel() {
-        var section = document.getElementById('conversations-section');
-        var toggleButton = document.getElementById('conversations-toggle');
-
-        if (section === null || toggleButton === null) {
-            return;
-        }
-
-        var isCollapsed = section.classList.contains('collapsed');
-
-        if (isCollapsed) {
-            section.classList.remove('collapsed');
-            toggleButton.setAttribute('aria-expanded', 'true');
-        } else {
-            section.classList.add('collapsed');
-            toggleButton.setAttribute('aria-expanded', 'false');
-        }
-    }
-
-    // API pública
     return {
-        switchTab: switchTab,
-        toggleConversationsPanel: toggleConversationsPanel
+        initialize: initialize,
+        switchTab: switchTab
     };
-
 })();
-
-// Exponer switchTab globalmente para onclick en HTML
-// @ts-ignore
-window.switchTab = TabsModule.switchTab;

@@ -1,23 +1,12 @@
-/**
- * Módulo de autenticación y gestión de vistas.
- * Gestiona el flujo de login, logout y recuperación de contraseña.
- * 
+﻿/**
+ * Authentication and view flow module.
+ * Handles login, logout, and password recovery request modal.
+ *
  * @file AuthModule.js
- * @requires AuthenticationService
- * @requires SessionManager
- * @requires InputValidator
- * @requires RateLimiter
- * @requires DomHelper
- * @requires DashboardModule
- * @requires AppConfig
  */
 
 var AuthModule = (function () {
     'use strict';
-
-    // =========================================================================
-    // REFERENCIAS A ELEMENTOS DEL DOM
-    // =========================================================================
 
     /** @type {HTMLFormElement|null} */
     var loginFormElement = /** @type {HTMLFormElement|null} */ (document.getElementById('login-form'));
@@ -28,7 +17,6 @@ var AuthModule = (function () {
     /** @type {HTMLElement|null} */
     var dashboardViewElement = document.getElementById('dashboard-view');
 
-    // Modal de recuperación de contraseña
     /** @type {HTMLAnchorElement|null} */
     var forgotPasswordLink = /** @type {HTMLAnchorElement|null} */ (document.getElementById('forgot-password-link'));
     /** @type {HTMLElement|null} */
@@ -40,44 +28,32 @@ var AuthModule = (function () {
     /** @type {HTMLElement|null} */
     var recoveryMessageContainer = document.getElementById('recovery-message');
 
-    // Vista de reset de contraseña
-    /** @type {HTMLElement|null} */
-    var resetPasswordView = document.getElementById('reset-password-view');
-    /** @type {HTMLElement|null} */
-    var resetMessageContainer = document.getElementById('reset-message');
+    /** @type {boolean} */
+    var eventsAttached = false;
 
-    /** @type {string} Username para el proceso de reset */
-    var resetUsernameValue = '';
-    /** @type {string|null} Token de reset extraído de la URL */
-    var resetToken = null;
-
-    // =========================================================================
-    // INICIALIZACIÓN
-    // =========================================================================
-
-    /**
-     * Inicializa el módulo de autenticación.
-     * Vincula event listeners y verifica el estado de la sesión.
-     */
     function initialize() {
         attachEventListeners();
 
-        if (checkForResetToken()) {
-            return;
+        if (typeof TabsModule !== 'undefined' && typeof TabsModule.initialize === 'function') {
+            TabsModule.initialize();
         }
 
         if (SessionManager.isSessionValid()) {
             displayDashboardView();
             DashboardModule.loadDashboardData();
-        } else {
-            displayLoginView();
+            return;
         }
+
+        displayLoginView();
     }
 
-    /**
-     * Vincula los event listeners a los elementos del DOM.
-     */
     function attachEventListeners() {
+        if (eventsAttached) {
+            return;
+        }
+
+        eventsAttached = true;
+
         if (loginFormElement !== null) {
             loginFormElement.addEventListener('submit', handleLoginFormSubmit);
         }
@@ -101,34 +77,10 @@ var AuthModule = (function () {
                 }
             });
         }
-
-        var resetForm = document.getElementById('reset-password-form');
-        if (resetForm !== null) {
-            resetForm.addEventListener('submit', handleResetPasswordSubmit);
-        }
-
-        var backLink = document.getElementById('back-to-login-link');
-        if (backLink !== null) {
-            backLink.addEventListener('click', function (event) {
-                event.preventDefault();
-                hideResetPasswordView();
-            });
-        }
-
-        var conversationsToggle = document.getElementById('conversations-toggle');
-        if (conversationsToggle !== null) {
-            conversationsToggle.addEventListener('click', TabsModule.toggleConversationsPanel);
-        }
     }
 
-    // =========================================================================
-    // GESTIÓN DEL LOGIN
-    // =========================================================================
-
     /**
-     * Maneja el envío del formulario de login.
-     * 
-     * @param {Event} submitEvent - Evento de submit.
+     * @param {Event} submitEvent
      */
     async function handleLoginFormSubmit(submitEvent) {
         submitEvent.preventDefault();
@@ -136,41 +88,38 @@ var AuthModule = (function () {
         DomHelper.hideErrorMessage(loginErrorContainer);
 
         var lockoutStatus = RateLimiter.checkLockoutStatus();
-
         if (lockoutStatus.isLocked) {
-            var lockoutMessage = 'Demasiados intentos fallidos. Por favor, espera ' +
-                lockoutStatus.remainingMinutes + ' minutos antes de intentar de nuevo.';
-            DomHelper.showErrorMessage(loginErrorContainer, lockoutMessage);
+            DomHelper.showErrorMessage(
+                loginErrorContainer,
+                'Demasiados intentos fallidos. Espera ' + lockoutStatus.remainingMinutes + ' minutos antes de intentar de nuevo.'
+            );
             return;
         }
 
         var usernameInput = DomHelper.getInputValue('username');
         var passwordInput = DomHelper.getInputValue('password');
-
         var validationResult = InputValidator.validateLoginCredentials(usernameInput, passwordInput);
 
         if (!validationResult.isValid) {
-            var validationErrorMessage = validationResult.errors.join(' ');
-            DomHelper.showErrorMessage(loginErrorContainer, validationErrorMessage);
+            DomHelper.showErrorMessage(loginErrorContainer, validationResult.errors.join(' '));
             return;
         }
 
-        var authenticationResult = await AuthenticationService.authenticate(
+        var authResult = await AuthenticationService.authenticate(
             validationResult.sanitizedUsername,
             validationResult.sanitizedPassword
         );
 
-        if (authenticationResult.success) {
-            handleSuccessfulLogin(authenticationResult);
-        } else {
-            handleFailedLogin(authenticationResult);
+        if (authResult.success) {
+            handleSuccessfulLogin(authResult);
+            return;
         }
+
+        handleFailedLogin(authResult);
     }
 
     /**
-     * Maneja un login exitoso.
-     * 
-     * @param {{success: boolean, userData?: any}} authResult - Resultado de la autenticación.
+     * @param {{ success: boolean, userData?: UserData }} authResult
      */
     function handleSuccessfulLogin(authResult) {
         RateLimiter.resetAttempts();
@@ -184,18 +133,16 @@ var AuthModule = (function () {
     }
 
     /**
-     * Maneja un login fallido.
-     * 
-     * @param {{success: boolean, message?: string}} authResult - Resultado de la autenticación.
+     * @param {{ success: boolean, message?: string }} authResult
      */
     function handleFailedLogin(authResult) {
         RateLimiter.recordFailedAttempt();
 
         var remainingAttempts = RateLimiter.getRemainingAttempts();
-        var errorMessage = authResult.message;
+        var errorMessage = authResult.message || 'Credenciales incorrectas.';
 
         if (remainingAttempts > 0) {
-            errorMessage = errorMessage + ' Intentos restantes: ' + remainingAttempts + '.';
+            errorMessage += ' Intentos restantes: ' + remainingAttempts + '.';
         } else {
             errorMessage = 'Cuenta bloqueada temporalmente por demasiados intentos fallidos.';
         }
@@ -203,65 +150,33 @@ var AuthModule = (function () {
         DomHelper.showErrorMessage(loginErrorContainer, errorMessage);
     }
 
-    // =========================================================================
-    // GESTIÓN DE VISTAS
-    // =========================================================================
-
-    /**
-     * Muestra la vista del dashboard y oculta el login.
-     */
     function displayDashboardView() {
+        if (dashboardViewElement !== null) {
+            dashboardViewElement.classList.remove('is-hidden');
+        }
         DomHelper.hideElement(loginViewElement);
         DomHelper.showElement(dashboardViewElement, 'flex');
 
         var currentUsername = SessionManager.getCurrentUsername();
-        var welcomeText = 'Panel de ' + (currentUsername || 'Usuario');
-        DomHelper.setTextContent('welcome-user', welcomeText);
+        DomHelper.setTextContent('welcome-user', 'Panel de ' + (currentUsername || 'Usuario'));
     }
 
-    /**
-     * Muestra la vista de login y oculta el dashboard.
-     */
     function displayLoginView() {
+        if (dashboardViewElement !== null) {
+            dashboardViewElement.classList.add('is-hidden');
+        }
         DomHelper.hideElement(dashboardViewElement);
         DomHelper.showElement(loginViewElement, 'flex');
+        hideRecoveryModal();
     }
 
-    /**
-     * Cierra la sesión del usuario.
-     */
     function logout() {
         SessionManager.destroySession();
         window.location.reload();
     }
 
-    // =========================================================================
-    // RECUPERACIÓN DE CONTRASEÑA
-    // =========================================================================
-
     /**
-     * Verifica si hay un token de reset en la URL.
-     * 
-     * @returns {boolean} True si hay token.
-     */
-    function checkForResetToken() {
-        var urlParams = new URLSearchParams(window.location.search);
-        var token = urlParams.get('reset_token');
-        var username = urlParams.get('username');
-
-        if (token && username) {
-            resetToken = token;
-            resetUsernameValue = username;
-            showResetPasswordView();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Maneja el clic en "Olvidé mi contraseña".
-     * 
-     * @param {Event} clickEvent - Evento de clic.
+     * @param {Event} clickEvent
      */
     function handleForgotPasswordClick(clickEvent) {
         clickEvent.preventDefault();
@@ -269,245 +184,144 @@ var AuthModule = (function () {
     }
 
     /**
-     * Maneja el envío del formulario de recuperación.
-     * 
-     * @param {Event} submitEvent - Evento de submit.
+     * @param {Event} submitEvent
      */
     async function handleForgotPasswordSubmit(submitEvent) {
         submitEvent.preventDefault();
 
         /** @type {HTMLInputElement|null} */
         var usernameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('recovery-username'));
-
-        if (!usernameInput) return;
+        if (usernameInput === null) {
+            return;
+        }
 
         var username = usernameInput.value.trim();
-
         if (!username) {
             showRecoveryMessage('Por favor, ingresa tu nombre de usuario.', 'error');
             return;
         }
 
-        var webhookUrl = AppConfig.API_ENDPOINTS.REQUEST_PASSWORD_RESET;
-
-        if (!webhookUrl) {
-            showRecoveryMessage('El servicio de recuperación no está configurado. Contacta al administrador.', 'error');
+        var requestEndpoint = AppConfig.API_ENDPOINTS.REQUEST_PASSWORD_RESET;
+        if (!requestEndpoint) {
+            showRecoveryMessage('El servicio de recuperacion no esta configurado. Contacta al administrador.', 'error');
             return;
         }
 
-        if (!forgotPasswordForm) return;
+        if (forgotPasswordForm === null) {
+            return;
+        }
 
         /** @type {HTMLButtonElement|null} */
         var submitButton = /** @type {HTMLButtonElement|null} */ (forgotPasswordForm.querySelector('button[type="submit"]'));
-        if (!submitButton) return;
+        if (submitButton === null) {
+            return;
+        }
 
         var originalButtonHtml = submitButton.innerHTML;
         submitButton.disabled = true;
         submitButton.innerHTML = '<span class="loading-spinner"></span> Enviando...';
 
         try {
-            var payload = {
+            var response = await ApiClient.post(requestEndpoint, {
                 username: username,
-                resetBaseUrl: window.location.origin + window.location.pathname
-            };
+                resetBaseUrl: buildResetBaseUrl()
+            });
 
-            var response = await ApiClient.post(webhookUrl, payload);
-
-            if (response !== null) {
-                if (response.success === false) {
-                    showRecoveryMessage(response.message || 'No se encontró el usuario. Verifica e intenta de nuevo.', 'error');
-                } else {
-                    showRecoveryMessage('📧 Se ha enviado un email con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada.', 'success');
-                    usernameInput.value = '';
-                    setTimeout(function () {
-                        hideRecoveryModal();
-                    }, 5000);
-                }
+            if (isSuccessfulResponse(response)) {
+                showRecoveryMessage(
+                    'Se envio un email con instrucciones para restablecer tu contrasena. Revisa tu bandeja de entrada.',
+                    'success'
+                );
+                usernameInput.value = '';
+                window.setTimeout(hideRecoveryModal, 5000);
             } else {
-                showRecoveryMessage('Error de conexión. Intenta de nuevo más tarde.', 'error');
+                showRecoveryMessage(
+                    response && response.message
+                        ? response.message
+                        : 'No se pudo procesar la solicitud. Verifica el usuario e intenta de nuevo.',
+                    'error'
+                );
             }
         } catch (error) {
-            console.error('Error en recuperación de contraseña:', error);
-            showRecoveryMessage('Ocurrió un error. Verifica tu usuario e intenta de nuevo.', 'error');
+            console.error('Password recovery request failed:', error);
+            showRecoveryMessage('Ocurrio un error de red. Intenta de nuevo mas tarde.', 'error');
         } finally {
             submitButton.disabled = false;
             submitButton.innerHTML = originalButtonHtml;
         }
+    }
+
+    function buildResetBaseUrl() {
+        var resetPath = window.location.pathname.replace(/[^/]*$/, 'reset-password.html');
+        return window.location.origin + resetPath;
     }
 
     /**
-     * Maneja el envío del formulario de reset de contraseña.
-     * 
-     * @param {Event} submitEvent - Evento de submit.
+     * @param {any} responseData
+     * @returns {boolean}
      */
-    async function handleResetPasswordSubmit(submitEvent) {
-        submitEvent.preventDefault();
-
-        /** @type {HTMLInputElement|null} */
-        var newPasswordInput = /** @type {HTMLInputElement|null} */ (document.getElementById('new-password'));
-        /** @type {HTMLInputElement|null} */
-        var confirmPasswordInput = /** @type {HTMLInputElement|null} */ (document.getElementById('confirm-password'));
-
-        if (!newPasswordInput || !confirmPasswordInput) return;
-
-        var newPassword = newPasswordInput.value;
-        var confirmPassword = confirmPasswordInput.value;
-
-        if (!newPassword || !confirmPassword) {
-            showResetMessage('Por favor, completa ambos campos.', 'error');
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            showResetMessage('Las contraseñas no coinciden.', 'error');
-            return;
-        }
-
-        if (newPassword.length < AppConfig.VALIDATION.PASSWORD_MIN_LENGTH) {
-            showResetMessage('La contraseña debe tener al menos ' + AppConfig.VALIDATION.PASSWORD_MIN_LENGTH + ' caracteres.', 'error');
-            return;
-        }
-
-        var webhookUrl = AppConfig.API_ENDPOINTS.CONFIRM_PASSWORD_RESET;
-
-        if (!webhookUrl) {
-            showResetMessage('El servicio de cambio de contraseña no está configurado. Contacta al administrador.', 'error');
-            return;
-        }
-
-        if (!resetToken) {
-            showResetMessage('Token de reset no válido. Por favor, solicita un nuevo email de recuperación.', 'error');
-            return;
-        }
-
-        /** @type {HTMLButtonElement|null} */
-        var submitButton = /** @type {HTMLButtonElement|null} */ (document.getElementById('btn-reset-submit'));
-        if (!submitButton) return;
-
-        var originalButtonHtml = submitButton.innerHTML;
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<span class="loading-spinner"></span> Procesando...';
-
-        try {
-            var payload = {
-                token: resetToken,
-                username: resetUsernameValue,
-                newPassword: newPassword
-            };
-
-            var response = await ApiClient.post(webhookUrl, payload);
-
-            if (response !== null) {
-                if (response.success === false) {
-                    showResetMessage(response.message || 'No se pudo cambiar la contraseña. El token puede haber expirado.', 'error');
-                } else {
-                    showResetMessage('✅ ¡Contraseña actualizada correctamente! Redirigiendo al login...', 'success');
-                    setTimeout(function () {
-                        var cleanUrl = window.location.origin + window.location.pathname;
-                        window.history.replaceState({}, document.title, cleanUrl);
-                        window.location.reload();
-                    }, 3000);
-                }
-            } else {
-                showResetMessage('Error de conexión. Intenta de nuevo más tarde.', 'error');
-            }
-        } catch (error) {
-            console.error('Error en cambio de contraseña:', error);
-            showResetMessage('Ocurrió un error. Por favor, intenta de nuevo.', 'error');
-        } finally {
-            submitButton.disabled = false;
-            submitButton.innerHTML = originalButtonHtml;
-        }
-    }
-
-    // =========================================================================
-    // FUNCIONES DE UI PARA MODALES
-    // =========================================================================
-
-    function showResetPasswordView() {
-        DomHelper.hideElement(loginViewElement);
-        DomHelper.hideElement(dashboardViewElement);
-        if (resetPasswordView) {
-            resetPasswordView.style.display = 'flex';
-        }
-    }
-
-    function hideResetPasswordView() {
-        if (resetPasswordView) {
-            resetPasswordView.style.display = 'none';
-        }
-        var cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-        displayLoginView();
+    function isSuccessfulResponse(responseData) {
+        return !!responseData && (responseData.success === true || responseData.status === 'success');
     }
 
     function showRecoveryModal() {
-        if (forgotPasswordModal !== null) {
-            forgotPasswordModal.style.display = 'flex';
-            clearRecoveryMessage();
-            var usernameInput = document.getElementById('recovery-username');
-            if (usernameInput !== null) {
-                usernameInput.focus();
-            }
+        if (forgotPasswordModal === null) {
+            return;
+        }
+
+        forgotPasswordModal.classList.remove('is-hidden');
+        forgotPasswordModal.style.display = 'flex';
+        clearRecoveryMessage();
+
+        /** @type {HTMLInputElement|null} */
+        var usernameInput = /** @type {HTMLInputElement|null} */ (document.getElementById('recovery-username'));
+        if (usernameInput !== null) {
+            usernameInput.focus();
         }
     }
 
     function hideRecoveryModal() {
-        if (forgotPasswordModal !== null) {
-            forgotPasswordModal.style.display = 'none';
-            clearRecoveryMessage();
-            if (forgotPasswordForm !== null) {
-                forgotPasswordForm.reset();
-            }
+        if (forgotPasswordModal === null) {
+            return;
+        }
+
+        forgotPasswordModal.classList.add('is-hidden');
+        forgotPasswordModal.style.display = 'none';
+        clearRecoveryMessage();
+
+        if (forgotPasswordForm !== null) {
+            forgotPasswordForm.reset();
         }
     }
 
     /**
      * @param {string} message
-     * @param {string} type
+     * @param {'success'|'error'} type
      */
     function showRecoveryMessage(message, type) {
-        if (recoveryMessageContainer !== null) {
-            recoveryMessageContainer.textContent = message;
-            recoveryMessageContainer.className = type;
-            recoveryMessageContainer.style.display = 'block';
+        if (recoveryMessageContainer === null) {
+            return;
         }
+
+        recoveryMessageContainer.textContent = message;
+        recoveryMessageContainer.className = type;
+        recoveryMessageContainer.style.display = 'block';
     }
 
     function clearRecoveryMessage() {
-        if (recoveryMessageContainer !== null) {
-            recoveryMessageContainer.textContent = '';
-            recoveryMessageContainer.className = '';
-            recoveryMessageContainer.style.display = 'none';
+        if (recoveryMessageContainer === null) {
+            return;
         }
+
+        recoveryMessageContainer.textContent = '';
+        recoveryMessageContainer.className = '';
+        recoveryMessageContainer.style.display = 'none';
     }
 
-    /**
-     * @param {string} message
-     * @param {string} type
-     */
-    function showResetMessage(message, type) {
-        if (resetMessageContainer !== null) {
-            resetMessageContainer.textContent = message;
-            resetMessageContainer.className = 'alert-' + type;
-            resetMessageContainer.style.display = 'block';
-        }
-    }
-
-    // API pública
     return {
         initialize: initialize,
         logout: logout,
         displayDashboardView: displayDashboardView,
         displayLoginView: displayLoginView
     };
-
 })();
-
-// Exponer logout globalmente para uso en HTML
-// @ts-ignore
-window.logout = AuthModule.logout;
-// @ts-ignore
-window.loadData = function () {
-    DashboardModule.loadDashboardData();
-};

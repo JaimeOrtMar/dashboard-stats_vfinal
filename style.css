@@ -1,5 +1,5 @@
-/**
- * Dashboard Stats - Sistema de Diseño Premium
+﻿/**
+ * Dashboard Stats - Sistema de DiseÃ±o Premium
  * Estilo moderno con glassmorphism, gradientes y micro-animaciones.
  * 
  * @file style.css
@@ -11,7 +11,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* =========================================================================
-   VARIABLES CSS - Sistema de Diseño
+   VARIABLES CSS - Sistema de DiseÃ±o
    ========================================================================= */
 :root {
     /* Colores Primarios */
@@ -448,7 +448,7 @@ body {
     animation: logoSpin 0.6s ease-out;
 }
 
-/* Títulos */
+/* TÃ­tulos */
 .login-card h1 {
     margin: 0 0 var(--spacing-xs);
     font-size: 2rem;
@@ -804,7 +804,7 @@ body {
     color: var(--color-text-muted);
 }
 
-/* Botón primario con icono */
+/* BotÃ³n primario con icono */
 .btn-primary {
     width: 100%;
     padding: var(--spacing-md);
@@ -901,7 +901,7 @@ body {
     }
 }
 
-/* Mensajes de recuperación */
+/* Mensajes de recuperaciÃ³n */
 #recovery-message,
 #reset-message {
     margin-top: var(--spacing-md);
@@ -1333,308 +1333,7 @@ body {
 }
 
 /* =========================================================================
-   WHATSAPP CONVERSATIONS
-   ========================================================================= */
-.conversations-section {
-    background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    margin-top: var(--spacing-xl);
-    overflow: hidden;
-}
-
-.conversations-section h3 {
-    margin: 0;
-    padding: var(--spacing-lg);
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--color-surface-elevated);
-}
-
-.conversations-section h3 svg {
-    color: var(--color-success);
-}
-
-/* Collapsible Header Button */
-.collapsible-header {
-    width: 100%;
-    padding: var(--spacing-lg);
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-sm);
-    border: none;
-    background: var(--color-surface-elevated);
-    cursor: pointer;
-    font-family: inherit;
-    text-align: left;
-    transition: background var(--transition-fast);
-}
-
-.collapsible-header:hover {
-    background: var(--color-surface);
-}
-
-.collapsible-title {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    flex: 1;
-}
-
-.collapsible-title .whatsapp-icon {
-    color: var(--color-success);
-}
-
-.collapse-icon {
-    color: var(--color-text-muted);
-    transition: transform var(--transition-base);
-}
-
-/* Collapsed State */
-.conversations-section.collapsed .collapse-icon {
-    transform: rotate(-90deg);
-}
-
-.conversations-section.collapsed .collapsible-content {
-    display: none;
-}
-
-/* Expanded State */
-.conversations-section:not(.collapsed) .collapse-icon {
-    transform: rotate(0deg);
-}
-
-.collapsible-content {
-    border-top: 1px solid var(--border-color);
-}
-
-.badge {
-    background: var(--color-primary);
-    color: white;
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-weight: 600;
-    margin-left: auto;
-}
-
-/* Chat Container - Split Layout */
-.chat-container {
-    display: flex;
-    height: 500px;
-    background: #f0f2f5;
-}
-
-/* Chat List (Left Panel) */
-.chat-list {
-    width: 320px;
-    min-width: 280px;
-    background: var(--color-surface);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-list-header {
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.chat-search {
-    width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    font-size: 0.875rem;
-    font-family: inherit;
-    background: var(--color-surface-elevated);
-}
-
-.chat-search:focus {
-    outline: none;
-    border-color: var(--color-primary);
-}
-
-.chat-list-items {
-    flex: 1;
-    overflow-y: auto;
-}
-
-/* Individual Chat Item */
-.chat-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-color);
-    transition: background var(--transition-fast);
-}
-
-.chat-item:hover {
-    background: var(--color-surface-elevated);
-}
-
-.chat-item.active {
-    background: var(--color-primary-light);
-}
-
-.chat-avatar {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    background: linear-gradient(135deg, var(--color-success), #059669);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.chat-info {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.chat-info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-}
-
-.chat-name {
-    font-weight: 600;
-    font-size: 0.925rem;
-    color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chat-time {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-}
-
-.chat-preview {
-    font-size: 0.85rem;
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chat-unread {
-    background: var(--color-success);
-    color: white;
-    font-size: 0.7rem;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: 600;
-    min-width: 18px;
-    text-align: center;
-}
-
-/* Chat Messages (Right Panel) */
-.chat-messages {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: #e5ddd5;
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4cfc9' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-}
-
-.chat-messages-header {
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.chat-contact-name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
-
-.chat-messages-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--spacing-lg);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-}
-
-/* Message Bubbles */
-.message-bubble {
-    max-width: 65%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-md);
-    font-size: 0.9rem;
-    line-height: 1.4;
-    position: relative;
-    animation: fadeIn 0.2s ease;
-}
-
-.message-bubble.inbound {
-    align-self: flex-start;
-    background: var(--color-surface);
-    color: var(--color-text-primary);
-    border-bottom-left-radius: 4px;
-}
-
-.message-bubble.outbound {
-    align-self: flex-end;
-    background: #dcf8c6;
-    color: var(--color-text-primary);
-    border-bottom-right-radius: 4px;
-}
-
-.message-time {
-    font-size: 0.7rem;
-    color: var(--color-text-muted);
-    text-align: right;
-    margin-top: 4px;
-}
-
-.message-status {
-    margin-left: 4px;
-}
-
-/* Status icons */
-.status-delivered::after {
-    content: '✓✓';
-    color: #53bdeb;
-}
-
-.status-read::after {
-    content: '✓✓';
-    color: #53bdeb;
-}
-
-.status-sent::after {
-    content: '✓';
-    color: var(--color-text-muted);
-}
-
-/* =========================================================================
-   SISTEMA DE PESTAÑAS / TABS
+   SISTEMA DE PESTANAS / TABS
    ========================================================================= */
 .tab-content {
     display: none;
@@ -1746,13 +1445,13 @@ body {
     color: #6366f1;
 }
 
-/* Duración de llamada */
+/* DuraciÃ³n de llamada */
 .call-duration {
     font-family: 'Courier New', monospace;
     font-weight: 500;
 }
 
-/* Botones de acción en la tabla */
+/* Botones de acciÃ³n en la tabla */
 .call-actions {
     display: flex;
     gap: var(--spacing-xs);
@@ -1794,14 +1493,14 @@ body {
     height: 32px;
 }
 
-/* Teléfono */
+/* TelÃ©fono */
 .call-phone {
     font-family: 'Courier New', monospace;
     font-weight: 500;
     color: var(--color-text-primary);
 }
 
-/* Transcripción expandible */
+/* TranscripciÃ³n expandible */
 .transcript-toggle {
     background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
     border: none;
@@ -1839,7 +1538,7 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-/* Transcripción formateada como conversación */
+/* TranscripciÃ³n formateada como conversaciÃ³n */
 .transcript-conversation {
     display: flex;
     flex-direction: column;
@@ -1945,7 +1644,7 @@ body {
 }
 
 /* =========================================================================
-   MODAL DE TRANSCRIPCIÓN
+   MODAL DE TRANSCRIPCIÃ“N
    ========================================================================= */
 .transcript-modal-overlay {
     position: fixed;
@@ -2095,7 +1794,7 @@ body {
     }
 }
 
-/* Tabla vacía */
+/* Tabla vacÃ­a */
 .calls-table-empty {
     text-align: center;
     padding: var(--spacing-2xl);
@@ -2173,3 +1872,21 @@ body {
         max-width: 150px;
     }
 }
+
+.is-hidden {
+    display: none;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+
