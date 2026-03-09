@@ -8,6 +8,10 @@
     'use strict';
 
     function initializeApplication() {
+        if (typeof PricingModule !== 'undefined' && typeof PricingModule.initialize === 'function') {
+            PricingModule.initialize();
+        }
+
         AuthModule.initialize();
 
         if (AppConfig.DEV_MODE && AppConfig.DEV_MODE.BYPASS_LOGIN) {

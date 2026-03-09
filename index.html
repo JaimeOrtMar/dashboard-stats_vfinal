@@ -176,17 +176,40 @@
         </aside>
 
         <main class="main-content">
+            <div id="usage-upgrade-popup" class="usage-upgrade-popup is-hidden" role="status" aria-live="polite">
+                <div class="usage-upgrade-popup-content">
+                    <p id="usage-upgrade-message" class="usage-upgrade-message"></p>
+                    <div class="usage-upgrade-actions">
+                        <button type="button" class="usage-upgrade-btn" data-action="open-pricing-modal">
+                            ⬆ Mejorar Plan
+                        </button>
+                        <button type="button" class="usage-upgrade-dismiss" data-action="dismiss-usage-popup" aria-label="Cerrar aviso de upgrade">
+                            ×
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <header class="header">
-                <h1 id="welcome-user">Panel de Métricas</h1>
-                <button data-action="refresh-dashboard" class="refresh-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <polyline points="1 20 1 14 7 14"></polyline>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
-                    Refrescar
-                </button>
+                <div class="header-title-group">
+                    <h1 id="welcome-user">Panel de Métricas</h1>
+                    <span id="current-plan-badge" class="current-plan-badge">Plan actual: Starter</span>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="upgrade-trigger-btn" data-action="open-pricing-modal" aria-label="Ver opciones para mejorar plan">
+                        <span class="upgrade-arrow" aria-hidden="true">⬆</span>
+                        <span>Mejorar Plan</span>
+                    </button>
+                    <button data-action="refresh-dashboard" class="refresh-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <polyline points="1 20 1 14 7 14"></polyline>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        Refrescar
+                    </button>
+                </div>
             </header>
 
             <!-- TAB: RESUMEN GENERAL -->
@@ -342,6 +365,21 @@
                 </div>
             </div>
         </div>
+
+        <div id="pricing-modal" class="pricing-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-labelledby="pricing-modal-title">
+            <div class="pricing-modal-content">
+                <div class="pricing-modal-header">
+                    <div>
+                        <h3 id="pricing-modal-title">Mejora tu plan</h3>
+                        <p id="upgrade-cta-banner" class="upgrade-cta-banner-text"></p>
+                    </div>
+                    <button type="button" class="pricing-modal-close" data-action="close-pricing-modal" aria-label="Cerrar planes">
+                        ×
+                    </button>
+                </div>
+                <div id="plans-grid" class="plans-grid"></div>
+            </div>
+        </div>
     </div>
 
     <!-- =========================================================================
@@ -367,6 +405,7 @@
     <script src="modules/TranscriptFormatter.js"></script>
     <script src="modules/DashboardModule.js"></script>
     <script src="modules/CallsModule.js"></script>
+    <script src="modules/PricingModule.js"></script>
     <script src="modules/TabsModule.js"></script>
     <script src="modules/AuthModule.js"></script>
 

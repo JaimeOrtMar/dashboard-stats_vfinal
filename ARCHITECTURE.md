@@ -5,7 +5,7 @@
 - `config/`: static configuration and runtime constants.
 - `services/`: HTTP and session/auth external interactions.
 - `utils/`: pure helpers and DOM utility wrappers.
-- `modules/`: feature modules for auth, tabs, calls, and dashboard rendering.
+- `modules/`: feature modules for auth, tabs, calls, dashboard rendering, and pricing CTA.
 - Root entrypoints: `index.html`, `reset-password.html`, `app.js`.
 
 ## Flow
@@ -13,8 +13,9 @@
 1. `app.js` initializes `AuthModule`.
 2. `AuthModule` chooses login view or dashboard view.
 3. `TabsModule` handles navigation and global UI actions (`logout`, `refresh-dashboard`).
-4. `DashboardModule` loads metrics and recordings.
-5. `CallsModule` loads call history and transcript modal interactions.
+4. `PricingModule` renders current plan badge, upgrade banner, and plan cards.
+5. `DashboardModule` loads metrics and recordings.
+6. `CallsModule` loads call history and transcript modal interactions.
 
 ## Conventions
 
@@ -24,9 +25,15 @@
 - Handle API responses defensively (`success` and `status` compatibility).
 - Escape dynamic strings or build DOM nodes directly.
 
+## Billing Config
+
+`AppConfig.BILLING` controls:
+
+- Current plan key (`CURRENT_PLAN_KEY`)
+- Recommended plan key (`RECOMMENDED_PLAN_KEY`)
+- WhatsApp destination (`WHATSAPP_BASE_URL`, `WHATSAPP_NUMBER`)
+- Upgrade catalog (`PLANS`)
+
 ## Security Defaults
 
-- `DEV_MODE.BYPASS_LOGIN = false`
-- `DEV_MODE.BYPASS_VALIDATION = false`
-
-Enable bypass flags only for local debugging.
+Use `DEV_MODE` bypass flags only for local debugging and keep them disabled in production.

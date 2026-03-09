@@ -159,6 +159,10 @@ var AuthModule = (function () {
 
         var currentUsername = SessionManager.getCurrentUsername();
         DomHelper.setTextContent('welcome-user', 'Panel de ' + (currentUsername || 'Usuario'));
+
+        if (typeof PricingModule !== 'undefined' && typeof PricingModule.renderPlansCta === 'function') {
+            PricingModule.renderPlansCta();
+        }
     }
 
     function displayLoginView() {

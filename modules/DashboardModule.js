@@ -73,6 +73,10 @@ var DashboardModule = (function () {
         DomHelper.setTextContent('val-in', String(callsData.inbound || '0'));
         DomHelper.setTextContent('val-out', String(callsData.outbound || '0'));
         DomHelper.setTextContent('val-mins', formatMinutesToReadable(callsData.minutes || 0));
+
+        if (typeof PricingModule !== 'undefined' && typeof PricingModule.updateUsageStatus === 'function') {
+            PricingModule.updateUsageStatus(callsData.minutes || 0);
+        }
     }
 
     /**
